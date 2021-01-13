@@ -2,7 +2,6 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using MafaniaBot.Abstractions;
-using MafaniaBot.Services;
 
 namespace MafaniaBot.Engines
 {

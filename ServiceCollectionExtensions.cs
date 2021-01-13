@@ -13,12 +13,14 @@ namespace MafaniaBot
         public static IServiceCollection AddTelegramBotClient(this IServiceCollection serviceCollection,
             IConfiguration configuration)
         {
-            var client = new TelegramBotClient(configuration["Token"]);
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+            var token = env == "Development" ? configuration["dev:BotToken"] : configuration["prod:BotToken"];
+            var client = new TelegramBotClient(token);
             var webHookUrl = $"{configuration["Url"]}/api/message/update";
 
             try
             {
-               hp.PostAsync($"https://api.telegram.org/bot" + configuration["Token"] + "/deleteWebhook",
+               hp.PostAsync($"https://api.telegram.org/bot" + token + "/deleteWebhook",
                new FormUrlEncodedContent(new Dictionary<string, string> { { "drop_pending_updates", "true" } })).Wait();
             } 
             catch (HttpRequestException e) 
