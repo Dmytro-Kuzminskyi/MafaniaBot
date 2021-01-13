@@ -4,7 +4,7 @@ namespace MafaniaBot.Models
 {
 	public class MafaniaBotContext : DbContext
 	{
-		public DbSet<MyGroup> MyGroups { get; set; }
+		public DbSet<AskAnonymousParticipant> AskAnonymousParticipants { get; set; }
 
 		public MafaniaBotContext() { }
 		public MafaniaBotContext(DbContextOptions<MafaniaBotContext> options) : base(options)
@@ -14,10 +14,10 @@ namespace MafaniaBot.Models
 		  => options.UseSqlServer(Startup.Conn);
 	}
 
-	public class MyGroup
+	public class AskAnonymousParticipant
 	{
 		public int Id { get; set; }
 		public long ChatId { get; set; }
-		public string Status { get; set; }
+		public long UserId { get; set; }
 	}
 }

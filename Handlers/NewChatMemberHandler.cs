@@ -3,8 +3,6 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using MafaniaBot.Models;
-using System.Linq;
 
 namespace MafaniaBot.Handlers
 {
@@ -24,27 +22,9 @@ namespace MafaniaBot.Handlers
 			var userlist = message.NewChatMembers;
 			string msg = null;
 
-			if (userlist[0].Id.Equals(Startup.MyBotId))
+			if (userlist[0].Id.Equals(botClient.BotId))
 			{
 				msg += "\n/help - список доступных команд.";
-
-				using (var db = new MafaniaBotContext())
-				{
-					var record = db.MyGroups
-								 .Where(g => g.ChatId == chatId)
-								 .FirstOrDefault();
-
-					if (record == null)
-					{
-						await db.AddAsync(new MyGroup { ChatId = chatId, Status = "member" });
-						await db.SaveChangesAsync();
-					}
-					else
-					{
-						record.Status = "member";
-						await db.SaveChangesAsync();
-					}
-				}
 				
 				await Task.Delay(3000);
 				await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);

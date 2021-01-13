@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Commands;
+using MafaniaBot.Commands.AskAnonymous;
 using MafaniaBot.Handlers;
 
 namespace MafaniaBot.Services
@@ -15,6 +16,8 @@ namespace MafaniaBot.Services
             {
                 new StartCommand(),
                 new WeatherCommand(),
+                new AskRegCommand(),
+                new AskUnregCommand(),
                 new AskAnonymousCommand()
             };
             _handlers = new List<Entity>
