@@ -3,6 +3,8 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using MafaniaBot.Models;
+using System.Linq;
 
 namespace MafaniaBot.Handlers
 {
@@ -15,18 +17,35 @@ namespace MafaniaBot.Handlers
 
 			return (message.NewChatMembers != null) ? true : false;
 		}
-
+		
 		public override async Task Execute(Message message, ITelegramBotClient botClient)
 		{
 			var chatId = message.Chat.Id;
 			var userlist = message.NewChatMembers;
-			var me = botClient.GetMeAsync().Result;
 			string msg = null;
 
-			if (userlist[0].Id.Equals(me.Id))
+			if (userlist[0].Id.Equals(Startup.MyBotId))
 			{
 				msg += "\n/help - список доступных команд.";
 
+				using (var db = new MafaniaBotContext())
+				{
+					var record = db.MyGroups
+								 .Where(g => g.ChatId == chatId)
+								 .FirstOrDefault();
+
+					if (record == null)
+					{
+						await db.AddAsync(new MyGroup { ChatId = chatId, Status = "member" });
+						await db.SaveChangesAsync();
+					}
+					else
+					{
+						record.Status = "member";
+						await db.SaveChangesAsync();
+					}
+				}
+				
 				await Task.Delay(3000);
 				await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
 			} 
@@ -42,7 +61,7 @@ namespace MafaniaBot.Handlers
 						"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
 						"[" + firstname + "](tg://user?id=" + userId + ")";
 
-					msg += mention + ", добро пожаловать в семью!";
+					msg += mention + ", добро пожаловать в Ханство!";
 				
 					await Task.Delay(3000);
 					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
