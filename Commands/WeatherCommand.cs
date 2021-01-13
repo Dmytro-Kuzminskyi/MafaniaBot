@@ -23,7 +23,7 @@ namespace MafaniaBot.Commands
 
 		public override bool Contains(Message message)
 		{
-			if (message.Type != MessageType.Text)
+			if (message.Chat.Type == ChatType.Channel)
 				return false;
 
 			return message.Text.StartsWith(pattern) && !message.From.IsBot;
@@ -47,7 +47,7 @@ namespace MafaniaBot.Commands
 				city = endPos == -1 ?
 					input.Substring(startPos + 1) :
 					input.Substring(startPos + 1, endPos - startPos);
-				city = Regex.Replace(city, @"[^a-zA-Zа-яА-Я]+", "");
+				city = Regex.Replace(city, @"[^a-zA-Zа-яА-Я\-]+", "");
 
 				try
 				{
