@@ -16,7 +16,7 @@ namespace MafaniaBot
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
             var token = env == "Development" ? configuration["dev:BotToken"] : configuration["prod:BotToken"];
             var client = new TelegramBotClient(token);
-            var webHookUrl = $"{configuration["Url"]}/api/message/update";
+            var webHookUrl = $"{Environment.GetEnvironmentVariable("SERVER_URL")}/api/message/update";
 
             try
             {
