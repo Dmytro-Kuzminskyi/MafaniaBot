@@ -1,11 +1,12 @@
 using System;
+using Microsoft.Extensions.Configuration;
+using MafaniaBot.Properties;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Services;
 using MafaniaBot.Engines;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Serialization;
@@ -23,15 +24,14 @@ namespace MafaniaBot
         {
             _configuration = configuration;
             env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            Conn = env == "Development" ?
-                _configuration["dev:ConnectionString"] : _configuration["prod:ConnectionString"];
+            Conn = env == "Development" ? Resources.DEV_DB_CS : Resources.PROD_DB_CS;
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .AddDbContext<MafaniaBotContext>(options => 
-                options.UseSqlServer(Conn))
+                /*.AddDbContext<MafaniaBotContext>(options =>
+                options.UseSqlServer(Conn))*/
                 .AddScoped<IUpdateEngine, UpdateEngine>()
                 .AddScoped<IUpdateService, UpdateService>()
                 .AddTelegramBotClient(_configuration)

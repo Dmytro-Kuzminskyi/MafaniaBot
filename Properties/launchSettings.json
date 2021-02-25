@@ -3,14 +3,13 @@
     "Development": {
       "commandName": "Project",
       "environmentVariables": {
-        "SERVER_URL": "https://5a28b12fcaa0.ngrok.io",
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "5000"
       }
     },
     "Production": {
       "commandName": "Project",
       "environmentVariables": {
-        "SERVER_URL": "https://",
         "ASPNETCORE_ENVIRONMENT": "Production"
       }
     }
