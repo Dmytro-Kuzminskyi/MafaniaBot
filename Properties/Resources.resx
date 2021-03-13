@@ -121,12 +121,9 @@
     <value>1550571043:AAFj9nd8thkhTh3o2FqlCGT23BNqPOxG8SA</value>
   </data>
   <data name="DEV_DB_CS" xml:space="preserve">
-    <value>Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=mafaniabot-localdb;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=False;ApplicationIntent=ReadWrite;MultiSubnetFailover=False</value>
+    <value>server=eu-cdbr-west-03.cleardb.net;user=b6d2ea7e0b15a8;password=85262983;database=heroku_e3844b7bcebdb13</value>
   </data>
   <data name="PROD_BOT_TOKEN" xml:space="preserve">
     <value>1559249359:AAFDkjppGBPWfZ8qOiSV6HRn9D3Op8n7VLQ</value>
-  </data>
-  <data name="PROD_DB_CS" xml:space="preserve">
-    <value />
   </data>
 </root>
