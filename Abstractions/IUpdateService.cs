@@ -5,6 +5,7 @@ namespace MafaniaBot.Abstractions
     public interface IUpdateService
     {
         List<Command> GetCommands();
-        List<Entity> GetEntities();
+        List<Entity> GetHandlers();
+        List<Entity> GetCallbackQueries();
     }
 }

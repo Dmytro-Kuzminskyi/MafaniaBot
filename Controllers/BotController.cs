@@ -27,6 +27,9 @@ namespace MafaniaBot.Controllers
             else if (update.Type == UpdateType.Message && update.Message.Entities == null)
                 await _updateEngine.HandleIncomingEvent(update);
 
+            else if (update.Type == UpdateType.CallbackQuery)
+                await _updateEngine.HandleIncomingCallbackQuery(update);
+
             return Ok();
         }
     }

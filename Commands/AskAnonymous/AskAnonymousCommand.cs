@@ -3,6 +3,10 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using MafaniaBot.Models;
+using System.Linq;
+using System.Collections.Generic;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.Commands.AskAnonymous
 {
@@ -12,7 +16,7 @@ namespace MafaniaBot.Commands.AskAnonymous
 
 		public override bool Contains(Message message)
 		{
-			if (message.Chat.Type == ChatType.Channel)
+			if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
 				return false;
 
 			return message.Text.StartsWith(pattern) && !message.From.IsBot;
@@ -22,25 +26,61 @@ namespace MafaniaBot.Commands.AskAnonymous
 		{
 			var chatId = message.Chat.Id;
 			var userId = message.From.Id;
-			var question = message.Text;
-			int toUserId;
+			string msg = null;
 
-			await botClient.DeleteMessageAsync(chatId, message.MessageId);
-
-			if (message.Chat.Type == ChatType.Private)
-
-				await botClient.SendTextMessageAsync(chatId, "Команда недоступна в личных сообщениях!", parseMode: ParseMode.Markdown);
-
-			else if (message.ReplyToMessage == null || message.ReplyToMessage.From.IsBot)
-
-				await botClient.SendTextMessageAsync(chatId, "Используй эту команду в ответ на сообщение пользователя!", parseMode: ParseMode.Markdown);
-
-			else if (message.ReplyToMessage.From.Id.Equals(userId))
-
-				await botClient.SendTextMessageAsync(chatId, "Невозможно задать вопрос самому себе! Ну либо у тебя шиза...", parseMode: ParseMode.Markdown);
-			else
+			using (var db = new MafaniaBotContext())
 			{
-				toUserId = message.ReplyToMessage.From.Id;
+				var record = db.AskAnonymousParticipants
+					.OrderBy(r => r.ChatId)
+					.Where(r => r.UserId.Equals(userId))
+					.FirstOrDefault();
+
+				if (record == null)
+				{
+					msg += "Ты не подписан на анонимные вопросы. Введи /askreg чтобы подписаться!";
+					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
+				}
+				else
+				{
+					var recordset = db.AskAnonymousParticipants
+					.OrderBy(r => r.ChatId)
+					.Where(r => !r.UserId.Equals(userId))
+					.Select(r => r.UserId);
+
+					var userlist = recordset.ToList();
+
+					if (userlist.Count == 0)
+					{
+						msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
+						await botClient.SendTextMessageAsync(userId, msg, parseMode: ParseMode.Markdown);
+					}
+					else
+					{
+						List<KeyValuePair<string, string>> keyboardData = new List<KeyValuePair<string, string>>();
+						var tasks = userlist.Select(u => botClient.GetChatMemberAsync(chatId, (int)u));
+						var result = await Task.WhenAll(tasks);
+						if (result.Length > 0)
+						{
+							result.ToList().ForEach(u =>
+							{
+								var firstname = u.User.FirstName;
+								var lastname = u.User.LastName;
+								var mention = lastname != null ? firstname + " " + lastname : firstname;
+								keyboardData.Add(new KeyValuePair<string, string>(mention, u.User.Id.ToString()));
+							});
+
+							InlineKeyboardButton[] ik = keyboardData.Select(item => InlineKeyboardButton.WithCallbackData(item.Key, item.Value)).ToArray();
+							var keyboard = new InlineKeyboardMarkup(ik);
+							msg += "Выбери кому ты хочешь задать анонимный вопрос:";
+							await botClient.SendTextMessageAsync(userId, msg, ParseMode.Markdown, replyMarkup: keyboard);
+						}
+						else
+						{
+							msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
+							await botClient.SendTextMessageAsync(userId, msg, ParseMode.Markdown);
+						}
+					}
+				}
 			}
 		}
 	}

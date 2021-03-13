@@ -34,11 +34,25 @@ namespace MafaniaBot.Engines
 		{
 			var message = update.Message;
 
-			foreach (var handler in _updateService.GetEntities())
+			foreach (var handler in _updateService.GetHandlers())
 			{
 				if (handler.Contains(message))
 				{
 					await handler.Execute(message, _telegramBotClient);
+					break;
+				}
+			}
+		}
+
+		public async Task HandleIncomingCallbackQuery(Update update)
+		{
+			var message = update.CallbackQuery.Message;
+
+			foreach (var callbackQuery in _updateService.GetCallbackQueries())
+			{
+				if (callbackQuery.Contains(message))
+				{
+					await callbackQuery.Execute(message, _telegramBotClient);
 					break;
 				}
 			}
