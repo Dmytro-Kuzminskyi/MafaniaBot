@@ -6,7 +6,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Handlers
 {
-	public class NewChatMemberHandler : Entity
+	public class NewChatMemberHandler : Entity<Message>
 	{
 		public override bool Contains(Message message)
 		{

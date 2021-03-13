@@ -22,13 +22,13 @@ namespace MafaniaBot.Commands.AskAnonymous
 
 		public override async Task Execute(Message message, ITelegramBotClient botClient)
 		{
-			var chatId = message.Chat.Id;
-			var userId = message.From.Id;
-			var firstname = message.From.FirstName;
-			var lastname = message.From.LastName;
+			long chatId = message.Chat.Id;
+			int userId = message.From.Id;
+			string firstname = message.From.FirstName;
+			string lastname = message.From.LastName;
 			string msg = null;
 
-			var mention = lastname != null ?
+			string mention = lastname != null ?
 				"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
 				"[" + firstname + "](tg://user?id=" + userId + ")";
 
@@ -51,7 +51,7 @@ namespace MafaniaBot.Commands.AskAnonymous
 				}
 			}
 
-			await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
+			await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
 		}
 	}
 }

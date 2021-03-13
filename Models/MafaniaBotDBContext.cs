@@ -6,6 +6,8 @@ namespace MafaniaBot.Models
 	{
 		public DbSet<Participant> AskAnonymousParticipants { get; set; }
 
+		public DbSet<PendingQuestion> PendingAnonymousQuestions { get; set; }
+
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
 			base.OnConfiguring(optionsBuilder);
@@ -15,7 +17,8 @@ namespace MafaniaBot.Models
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
 		{
 			base.OnModelCreating(modelBuilder);
-			modelBuilder.Entity<Participant>();			
+			modelBuilder.Entity<Participant>();
+			modelBuilder.Entity<PendingQuestion>();
 		}		
 	}
 }

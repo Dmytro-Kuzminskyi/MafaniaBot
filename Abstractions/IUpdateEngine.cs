@@ -7,5 +7,6 @@ namespace MafaniaBot.Abstractions
 	{
 		public Task HandleIncomingMessage(Update update);
 		public Task HandleIncomingEvent(Update update);
+		public Task HandleIncomingCallbackQuery(Update update);
 	}
 }
