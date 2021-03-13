@@ -1,5 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using MafaniaBot.Properties;
 using Telegram.Bot;
 using System.Net.Http;
 using System.Collections.Generic;
@@ -7,16 +8,15 @@ using System;
 
 namespace MafaniaBot
 {
-    public static class ServiceCollectionExtensions
+    public static class WebhookStartup
     {
         public static readonly HttpClient hp = new HttpClient();
-        public static IServiceCollection AddTelegramBotClient(this IServiceCollection serviceCollection,
-            IConfiguration configuration)
+        public static IServiceCollection AddTelegramBotClient(this IServiceCollection serviceCollection, IConfiguration configuration)
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            var token = env == "Development" ? configuration["dev:BotToken"] : configuration["prod:BotToken"];
+            var token = env == "Development" ? Resources.DEV_BOT_TOKEN : Resources.PROD_BOT_TOKEN;
             var client = new TelegramBotClient(token);
-            var webHookUrl = $"{configuration["Url"]}/api/message/update";
+            var webHookUrl = $"{configuration["SelfHost"]}/api/message/update";
 
             try
             {

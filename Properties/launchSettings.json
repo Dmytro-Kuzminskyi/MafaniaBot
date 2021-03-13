@@ -1,16 +1,17 @@
 {
-    "profiles": {
-        "Development": {
-            "commandName": "Project",
-            "environmentVariables": {
-                "ASPNETCORE_ENVIRONMENT": "Development"
-            }
-        },
-        "Production": {
-            "commandName": "Project",
-            "environmentVariables": {
-                "ASPNETCORE_ENVIRONMENT": "Production"
-            }
-        }
+  "profiles": {
+    "Development": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "5000"
+      }
+    },
+    "Production": {
+      "commandName": "Project",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Production"
+      }
     }
+  }
 }

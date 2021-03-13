@@ -32,7 +32,7 @@ namespace MafaniaBot.Commands.AskAnonymous
 				"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
 				"[" + firstname + "](tg://user?id=" + userId + ")";
 
-			using (var db = new MafaniaBotContext())
+			using (var db = new MafaniaBotDBContext())
 			{
 				var record = db.AskAnonymousParticipants
 						.OrderBy(r => r.ChatId)
@@ -41,7 +41,7 @@ namespace MafaniaBot.Commands.AskAnonymous
 
 				if (record == null)
 				{
-					db.Add(new AskAnonymousParticipant { ChatId = chatId, UserId = userId });
+					db.Add(new Participant { ChatId = chatId, UserId = userId });
 					await db.SaveChangesAsync();
 					msg += mention + " подписался на анонимные вопросы!";
 				}
