@@ -8,6 +8,7 @@ namespace MafaniaBot.Models
 
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
+			base.OnConfiguring(optionsBuilder);
 			optionsBuilder.UseMySQL(Startup.DB_CS);
 		}
 
