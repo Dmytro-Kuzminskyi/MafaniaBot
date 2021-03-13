@@ -2,7 +2,7 @@
 
 namespace MafaniaBot.Models
 {
-	public class Participant
+	public class PendingQuestion
 	{
 		[Required]
 		public int Id { get; set; }
@@ -11,6 +11,12 @@ namespace MafaniaBot.Models
 		public long ChatId { get; set; }
 
 		[Required]
-		public int UserId { get; set; }
+		public int FromUserId { get; set; }
+
+		[Required]
+		public int ToUserId { get; set; }
+
+		[Required]
+		public string ToUserName { get; set; }
 	}
 }

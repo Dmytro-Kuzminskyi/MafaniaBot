@@ -18,7 +18,7 @@ namespace MafaniaBot.Engines
 
 		public async Task HandleIncomingMessage(Update update)
 		{
-			var message = update.Message;
+			Message message = update.Message;
 
 			foreach (var command in _updateService.GetCommands())
 			{
@@ -32,7 +32,7 @@ namespace MafaniaBot.Engines
 
 		public async Task HandleIncomingEvent(Update update)
 		{
-			var message = update.Message;
+			Message message = update.Message;
 
 			foreach (var handler in _updateService.GetHandlers())
 			{
@@ -46,13 +46,13 @@ namespace MafaniaBot.Engines
 
 		public async Task HandleIncomingCallbackQuery(Update update)
 		{
-			var message = update.CallbackQuery.Message;
+			CallbackQuery callbackQuery = update.CallbackQuery;
 
-			foreach (var callbackQuery in _updateService.GetCallbackQueries())
+			foreach (var cb in _updateService.GetCallbackQueries())
 			{
-				if (callbackQuery.Contains(message))
+				if (cb.Contains(callbackQuery.Message))
 				{
-					await callbackQuery.Execute(message, _telegramBotClient);
+					await cb.Execute(callbackQuery, _telegramBotClient);
 					break;
 				}
 			}

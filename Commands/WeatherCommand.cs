@@ -31,9 +31,9 @@ namespace MafaniaBot.Commands
 
 		public override async Task Execute(Message message, ITelegramBotClient botClient)
 		{
-			var chatId = message.Chat.Id;
-			var messageId = message.MessageId;
-			var input = message.Text;
+			long chatId = message.Chat.Id;
+			int messageId = message.MessageId;
+			string input = message.Text;
 
 			if (input.Length < 10)
 			{
@@ -42,8 +42,8 @@ namespace MafaniaBot.Commands
 			}
 			else
 			{
-				var startPos = input.IndexOf(' ');
-				var endPos = input.IndexOf(' ', startPos + 1);
+				int startPos = input.IndexOf(' ');
+				int endPos = input.IndexOf(' ', startPos + 1);
 				city = endPos == -1 ?
 					input.Substring(startPos + 1) :
 					input.Substring(startPos + 1, endPos - startPos);
@@ -51,26 +51,26 @@ namespace MafaniaBot.Commands
 
 				try
 				{
-					var request = (HttpWebRequest)
+					HttpWebRequest request = (HttpWebRequest)
 						WebRequest.Create(weatherAPIUrl + city + weatherAPIKey + weatherUnits + units);
 
-					var response = (HttpWebResponse)request.GetResponse();
+					HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
 					using var receiveStream = response.GetResponseStream();
 					using var readStream = new StreamReader(receiveStream, Encoding.UTF8);
-					var jsonResponse = readStream.ReadToEnd();
+					string jsonResponse = readStream.ReadToEnd();
 
-					var obj = JObject.Parse(jsonResponse);
-					var name = obj["name"].ToString();
-					var country = obj["sys"]["country"].ToString();
-					var temp = float.Parse(obj["main"]["temp"].ToString());
-					var feels_like = float.Parse(obj["main"]["feels_like"].ToString());
-					var temp_min = float.Parse(obj["main"]["temp_min"].ToString());
-					var temp_max = float.Parse(obj["main"]["temp_max"].ToString());
-					var pressure = float.Parse(obj["main"]["pressure"].ToString()) / 1.333;
-					var humidity = int.Parse(obj["main"]["humidity"].ToString());
+					JObject obj = JObject.Parse(jsonResponse);
+					string name = obj["name"].ToString();
+					string country = obj["sys"]["country"].ToString();
+					float temp = float.Parse(obj["main"]["temp"].ToString());
+					float feels_like = float.Parse(obj["main"]["feels_like"].ToString());
+					float temp_min = float.Parse(obj["main"]["temp_min"].ToString());
+					float temp_max = float.Parse(obj["main"]["temp_max"].ToString());
+					double pressure = float.Parse(obj["main"]["pressure"].ToString()) / 1.333;
+					int humidity = int.Parse(obj["main"]["humidity"].ToString());
 
-					var msg = "Текущая погода в " + name + ", " + country +
+					string msg = "Текущая погода в " + name + ", " + country +
 						"\nТемпература: " + Math.Round(temp, 1) + " °С" +
 						"\nПо ощущениям: " + Math.Round(feels_like, 1) + " °С" +
 						"\nМинимальная: " + Math.Round(temp_min, 1) + " °С" +
