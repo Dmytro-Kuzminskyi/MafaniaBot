@@ -9,18 +9,18 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 	{
 		public override bool Contains(CallbackQuery callbackQuery)
 		{
-			return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для");
+			return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для") && callbackQuery.Data.StartsWith("show&");
 		}
 
 		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
 		{
-			int recipientId = int.Parse(callbackQuery.Data.Split(':')[0]);
-			string message = callbackQuery.Data.Split(':')[1];
+			string data = callbackQuery.Data.Split('&')[1];
+			int recipientId = int.Parse(data.Split(':')[0]);
+			string message = data.Split(':')[1];
 
 			if (callbackQuery.From.Id.Equals(recipientId))
 			{
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, message, true);
-				await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
 			}
 			else
 			{

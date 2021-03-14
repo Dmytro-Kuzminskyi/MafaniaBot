@@ -23,29 +23,57 @@ namespace MafaniaBot.Handlers
 		{
 			long chatId = message.Chat.Id;
 			int userId = message.From.Id;
+			string msg = null;
 
 			using (var db = new MafaniaBotDBContext())
 			{
-				var record = db.PendingAnonymousQuestions
+				var recordPendingQuestion = db.PendingAnonymousQuestions
 					.OrderBy(r => r.FromUserId)
 					.Where(r => r.FromUserId.Equals(userId))
 					.FirstOrDefault();
 
-				if (record != null)
+				if (recordPendingQuestion != null)
 				{
 					string question = message.Text;
-					string msg = "Новый анонимный вопрос для [" + record.ToUserName + "](tg://user?id=" + record.ToUserId + ")";
+					msg += "Новый анонимный вопрос для [" + recordPendingQuestion.ToUserName + 
+						"](tg://user?id=" + recordPendingQuestion.ToUserId + ")";		
 
-					db.Remove(record);
-					await db.SaveChangesAsync();
+					var buttonShow = InlineKeyboardButton.WithCallbackData("Посмотреть", 
+						"show&" + recordPendingQuestion.ToUserId + ":" + question);
+					var buttonAnswer = InlineKeyboardButton.WithCallbackData("Ответить", 
+						"&" + recordPendingQuestion.FromUserId + ":" + recordPendingQuestion.ToUserId + ":" + question);
 
-					var button = InlineKeyboardButton.WithCallbackData("Посмотреть", record.ToUserId + ":" + question);
-					var keyboard = new InlineKeyboardMarkup(button);
+					var keyboard = new InlineKeyboardMarkup(new InlineKeyboardButton[] { buttonShow, buttonAnswer });
 
 					await botClient.SendTextMessageAsync(chatId, "Вопрос успешно отправлен!");
 
-					await botClient.SendTextMessageAsync(record.ChatId, msg, ParseMode.Markdown, replyMarkup: keyboard);
-				}			
+					await botClient.SendTextMessageAsync(recordPendingQuestion.ChatId, msg, ParseMode.Markdown, replyMarkup: keyboard);
+
+					db.Remove(recordPendingQuestion);
+					await db.SaveChangesAsync();
+				}
+
+				var recordPendingAnswer = db.PendingAnonymousAnswers
+					.OrderBy(r => r.FromUserId)
+					.Where(r => r.FromUserId.Equals(userId))
+					.FirstOrDefault();
+
+				if (recordPendingAnswer != null)
+				{
+					await botClient.SendTextMessageAsync(chatId, "Ответ успешно отправлен!");
+
+					string mention = "[" + recordPendingAnswer.FromUserName + "](tg://user?id=" + recordPendingAnswer.FromUserId + ")";
+
+					msg += "Ответ пользователя " + mention + " на ваш вопрос:" +
+						"\n" + message.Text;
+
+					await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Markdown);
+
+					await botClient.DeleteMessageAsync(recordPendingAnswer.ChatId, recordPendingAnswer.MessageId);
+
+					db.Remove(recordPendingAnswer);
+					await db.SaveChangesAsync();
+				}
 			}
 		}
 	}

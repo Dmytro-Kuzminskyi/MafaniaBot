@@ -43,7 +43,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 					string username = lastname != null ? firstname + " " + lastname : firstname;
 
 					string mention = "[" + username + "](tg://user?id=" + toUserId + ")";
-					string msg = "Напиши свой вопрос для: " + mention;
+					string msg = "Напиши анонимный вопрос для: " + mention;
 					
 					db.Add(new PendingQuestion
 					{
