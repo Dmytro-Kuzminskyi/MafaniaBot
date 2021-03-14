@@ -44,7 +44,7 @@ namespace MafaniaBot
                 string dbHost = dbInfo.Split('/')[0];
                 string dbName = dbInfo.Split('/')[1];
 
-                string connStr = "server={dbHost};user={dbUser};password={dbPass};database={dbName};charset=utf8;persist security info=true";
+                string connStr = $"server={dbHost};user={dbUser};password={dbPass};database={dbName};charset=utf8;persist security info=true";
                 DB_CS = connStr;
             }
                 
