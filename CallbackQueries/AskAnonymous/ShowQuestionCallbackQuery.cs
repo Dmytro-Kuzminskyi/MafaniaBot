@@ -5,11 +5,11 @@ using Telegram.Bot.Types;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
-	public class ShowAnonymousQuestionCallbackQuery : Entity<CallbackQuery>
+	public class ShowQuestionCallbackQuery : Entity<CallbackQuery>
 	{
-		public override bool Contains(Message message)
+		public override bool Contains(CallbackQuery callbackQuery)
 		{
-			return message.Text.StartsWith("Новый анонимный вопрос для");
+			return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для");
 		}
 
 		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
@@ -24,7 +24,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			}
 			else
 			{
-				message = "Этот вопрос не для вас";
+				message = "Этот вопрос не для тебя!";
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, message, true);
 			}
 		}

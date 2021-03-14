@@ -8,6 +8,6 @@ namespace MafaniaBot.Abstractions
     {
         public abstract Task Execute(T update, ITelegramBotClient botClient);
 
-        public abstract bool Contains(Message message);
+        public abstract bool Contains(T update);
     }
 }

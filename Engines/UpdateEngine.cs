@@ -50,7 +50,7 @@ namespace MafaniaBot.Engines
 
 			foreach (var cb in _updateService.GetCallbackQueries())
 			{
-				if (cb.Contains(callbackQuery.Message))
+				if (cb.Contains(callbackQuery))
 				{
 					await cb.Execute(callbackQuery, _telegramBotClient);
 					break;

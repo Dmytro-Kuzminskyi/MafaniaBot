@@ -70,6 +70,15 @@ namespace MafaniaBot.Properties {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to https://t.me/mafaniatestbot.
+        /// </summary>
+        internal static string DEV_BOT_URL {
+            get {
+                return ResourceManager.GetString("DEV_BOT_URL", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to server=eu-cdbr-west-03.cleardb.net;user=b6d2ea7e0b15a8;password=85262983;database=heroku_e3844b7bcebdb13.
         /// </summary>
         internal static string DEV_DB_CS {
@@ -84,6 +93,15 @@ namespace MafaniaBot.Properties {
         internal static string PROD_BOT_TOKEN {
             get {
                 return ResourceManager.GetString("PROD_BOT_TOKEN", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to https://t.me/mafaniabot.
+        /// </summary>
+        internal static string PROD_BOT_URL {
+            get {
+                return ResourceManager.GetString("PROD_BOT_URL", resourceCulture);
             }
         }
     }

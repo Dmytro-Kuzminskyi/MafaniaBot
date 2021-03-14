@@ -17,6 +17,8 @@ namespace MafaniaBot
     {
         private readonly IConfiguration _configuration;
         public static string DB_CS { get; private set; }
+        public static string BOT_URL { get; private set; }
+
         private string env;
 
         public Startup(IConfiguration configuration)
@@ -30,6 +32,7 @@ namespace MafaniaBot
             if (env == "Development")
             {
                 DB_CS = Resources.DEV_DB_CS;
+                BOT_URL = Resources.DEV_BOT_URL;
             }
             else
 			{
@@ -46,6 +49,7 @@ namespace MafaniaBot
 
                 string connStr = $"server={dbHost};user={dbUser};password={dbPass};database={dbName};charset=utf8;persist security info=true";
                 DB_CS = connStr;
+                BOT_URL = Resources.PROD_BOT_URL;
             }
                 
             services    
