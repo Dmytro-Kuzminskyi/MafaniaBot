@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -12,9 +14,6 @@ namespace MafaniaBot.Commands
 
         public override bool Contains(Message message)
         {
-            if (message.Chat.Type != ChatType.Private)
-                return false;
-
             return message.Text.StartsWith(pattern) && !message.From.IsBot;
         }
 
@@ -30,8 +29,25 @@ namespace MafaniaBot.Commands
                 "[" + firstname + "](tg://user?id=" + userId + ")";
 
             string msg = "Привет, " + mention + "!" + 
-                "\nЧтобы использовать команды бота, добавь его в группу." +
                 "\n/help - список доступных команд.";
+
+            if (message.Chat.Type == ChatType.Private)
+			{
+                using (var db = new MafaniaBotDBContext())
+				{
+                    var record = db.MyChatMembers
+                        .OrderBy(r => r.UserId)
+                        .Where(r => r.UserId.Equals(userId))
+                        .FirstOrDefault();
+
+                    if (record == null)
+					{
+                        db.Add(new MyChatMember { UserId = userId });
+
+                        await db.SaveChangesAsync();
+					}
+				}
+			}
 
             await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
         }

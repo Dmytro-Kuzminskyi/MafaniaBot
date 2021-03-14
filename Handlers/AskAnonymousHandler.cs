@@ -1,5 +1,4 @@
 ﻿using System.Linq;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
@@ -22,26 +21,28 @@ namespace MafaniaBot.Handlers
 
 		public override async Task Execute(Message message, ITelegramBotClient botClient)
 		{
+			long chatId = message.Chat.Id;
 			int userId = message.From.Id;
 
 			using (var db = new MafaniaBotDBContext())
 			{
 				var record = db.PendingAnonymousQuestions
-					.OrderBy(r => r.ChatId)
+					.OrderBy(r => r.FromUserId)
 					.Where(r => r.FromUserId.Equals(userId))
 					.FirstOrDefault();
 
 				if (record != null)
 				{
 					string question = message.Text;
-					string msg = "Новый анонимный вопрос для "
-						+ "[" + record.ToUserName + "](tg://user?id=" + record.ToUserId + ")";
+					string msg = "Новый анонимный вопрос для [" + record.ToUserName + "](tg://user?id=" + record.ToUserId + ")";
 
 					db.Remove(record);
 					await db.SaveChangesAsync();
 
 					var button = InlineKeyboardButton.WithCallbackData("Посмотреть", record.ToUserId + ":" + question);
 					var keyboard = new InlineKeyboardMarkup(button);
+
+					await botClient.SendTextMessageAsync(chatId, "Вопрос успешно отправлен!");
 
 					await botClient.SendTextMessageAsync(record.ChatId, msg, ParseMode.Markdown, replyMarkup: keyboard);
 				}			

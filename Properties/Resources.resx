@@ -120,10 +120,16 @@
   <data name="DEV_BOT_TOKEN" xml:space="preserve">
     <value>1550571043:AAFj9nd8thkhTh3o2FqlCGT23BNqPOxG8SA</value>
   </data>
+  <data name="DEV_BOT_URL" xml:space="preserve">
+    <value>https://t.me/mafaniatestbot</value>
+  </data>
   <data name="DEV_DB_CS" xml:space="preserve">
     <value>server=eu-cdbr-west-03.cleardb.net;user=b6d2ea7e0b15a8;password=85262983;database=heroku_e3844b7bcebdb13</value>
   </data>
   <data name="PROD_BOT_TOKEN" xml:space="preserve">
     <value>1559249359:AAFDkjppGBPWfZ8qOiSV6HRn9D3Op8n7VLQ</value>
+  </data>
+  <data name="PROD_BOT_URL" xml:space="preserve">
+    <value>https://t.me/mafaniabot</value>
   </data>
 </root>

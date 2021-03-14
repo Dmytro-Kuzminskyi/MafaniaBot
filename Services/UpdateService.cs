@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Commands;
-using MafaniaBot.Commands.AskAnonymous;
 using MafaniaBot.Handlers;
 using MafaniaBot.CallbackQueries.AskAnonymous;
 using Telegram.Bot.Types;
@@ -19,9 +18,7 @@ namespace MafaniaBot.Services
             {
                 new StartCommand(),
                 new WeatherCommand(),
-                new AskRegCommand(),
-                new AskUnregCommand(),
-                new AskAnonymousCommand()
+                new AskMenuCommand(),
             };
             _handlers = new List<Entity<Message>>
             { 
@@ -30,8 +27,11 @@ namespace MafaniaBot.Services
             };
             _callbackQueries = new List<Entity<CallbackQuery>>
             {
-                new AskAnonymousSelectUserCallbackQuery(),
-                new ShowAnonymousQuestionCallbackQuery()
+                new AskActivateCallbackQuery(),
+                new AskDeactivateCallbackQuery(),
+                new AskInitiateCallbackQuery(),
+                new AskSelectUserCallbackQuery(),
+                new ShowQuestionCallbackQuery()
             };
         }
 
