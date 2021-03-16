@@ -47,15 +47,27 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 					//TODO Check If bot is banned
 				}
 
-				var recordPending = db.PendingAnonymousQuestions
+				var recordPendingAnswer = db.PendingAnonymousAnswers
 						.OrderBy(r => r.FromUserId)
 						.Where(r => r.FromUserId.Equals(userId))
 						.FirstOrDefault();
 
-				if (recordPending != null)
+				if (recordPendingAnswer != null)
 				{
-					msg += "Закончи с предыдущим вопросом, чтобы задать новый!";
-					await botClient.SendTextMessageAsync(chatId, msg);
+					msg += "Сначала ответь на вопрос!";
+					await botClient.SendTextMessageAsync(userId, msg);
+					return;					
+				}
+
+				var recordPendingQuestion = db.PendingAnonymousQuestions
+						.OrderBy(r => r.FromUserId)
+						.Where(r => r.FromUserId.Equals(userId))
+						.FirstOrDefault();
+
+				if (recordPendingQuestion != null)
+				{
+					msg += "Сначала закончи с предыдущим вопросом!";
+					await botClient.SendTextMessageAsync(userId, msg);
 					return;
 				}
 
@@ -86,8 +98,8 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 							keyboardData.Add(new KeyValuePair<string, string>(mention, chatId.ToString() + ":" + member.User.Id.ToString()));
 						});
 
-						InlineKeyboardButton[] ik = keyboardData.Select(item => InlineKeyboardButton.WithCallbackData(item.Key, item.Value)).ToArray();
-						var keyboard = new InlineKeyboardMarkup(ik);
+						var keyboard = Helpers.GetInlineKeyboard(keyboardData, 3, "CallbackData");
+
 						msg += "Выбери кому ты хочешь задать анонимный вопрос:";
 						await botClient.SendTextMessageAsync(userId, msg, replyMarkup: keyboard);
 					}

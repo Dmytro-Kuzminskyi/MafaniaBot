@@ -31,7 +31,8 @@ namespace MafaniaBot.Services
                 new AskDeactivateCallbackQuery(),
                 new AskInitiateCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
-                new ShowQuestionCallbackQuery()
+                new ShowQuestionCallbackQuery(),
+                new AnswerQuestionCallbackQuery()
             };
         }
 
