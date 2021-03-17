@@ -1,13 +1,12 @@
-﻿using System.Threading.Tasks;
-using MafaniaBot.Abstractions;
+﻿using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using System;
 using System.Net;
 using System.IO;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 
 namespace MafaniaBot.Commands
@@ -23,9 +22,6 @@ namespace MafaniaBot.Commands
 
 		public override bool Contains(Message message)
 		{
-			if (message.Chat.Type == ChatType.Channel)
-				return false;
-
 			return message.Text.StartsWith(pattern) && !message.From.IsBot;
 		}
 
@@ -37,8 +33,15 @@ namespace MafaniaBot.Commands
 
 			if (input.Length < 10)
 			{
-				await botClient.SendTextMessageAsync(chatId, "Введите команду в формате /weather <Город>", 
-					replyToMessageId: messageId);				
+				try
+				{
+					Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg=Incorrect command format #replyToMessageId={messageId}");
+					await botClient.SendTextMessageAsync(chatId, "Введите команду в формате /weather <Город>", replyToMessageId: messageId);
+				}
+				catch (Exception ex)
+				{
+					Logger.Log.Error("/WEATHER Error while SendTextMessage", ex);
+				}
 			}
 			else
 			{
@@ -78,15 +81,19 @@ namespace MafaniaBot.Commands
 						"\nДавление: " + Math.Round(pressure) + " мм pт. ст." +
 						"\nВлажность: " + humidity + " %";
 
-
+					Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
 					await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
 				} 
 				catch (WebException wex)
 				{
-					Console.WriteLine(wex.Message);
 					if (wex.Message.Contains("(404) Not Found"))
 					{
+						Logger.Log.Warn($"/WEATHER Not found #chatId={chatId} #replyToMessageId={messageId}", wex);
 						await botClient.SendTextMessageAsync(chatId, "Город не найден!" , replyToMessageId: messageId);
+					}
+					else
+					{
+						Logger.Log.Error($"/WEATHER Error in weather api endpoint", wex);
 					}
 				}
 			}

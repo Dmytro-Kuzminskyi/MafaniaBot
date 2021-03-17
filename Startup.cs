@@ -1,4 +1,3 @@
-using System;
 using MafaniaBot.Models;
 using MafaniaBot.Engines;
 using MafaniaBot.Services;
@@ -6,7 +5,6 @@ using MafaniaBot.Abstractions;
 using Newtonsoft.Json.Serialization;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,8 +13,8 @@ namespace MafaniaBot
     public class Startup
     {
         private readonly IConfiguration _configuration;
-        public static string DATABASE_URL { get; private set; }
-        public static string BOT_URL { get; private set; }
+        internal static string DATABASE_URL { get; private set; }
+        internal static string BOT_URL { get; private set; }
 
         public Startup(IConfiguration configuration)
         {
@@ -42,7 +40,7 @@ namespace MafaniaBot
                 .AddFluentValidation();
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IServiceProvider serviceProvider)
+        public void Configure(IApplicationBuilder app)
         {
             app.UseDeveloperExceptionPage();
             app.UseRouting();
