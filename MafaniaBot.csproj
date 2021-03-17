@@ -2,32 +2,21 @@
 
   <PropertyGroup>
 	  <TargetFramework>net5.0</TargetFramework>
-	  <Platforms>x64</Platforms>
+	  <Platforms>AnyCPU</Platforms>
 	  <OutputType>Exe</OutputType>
+	  <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+	  <DockerfileContext>.</DockerfileContext>
+	  <DockerfileRunArguments>-p 5000:5000</DockerfileRunArguments>
   </PropertyGroup>
 	
   <ItemGroup>
 	  <PackageReference Include="FluentValidation.AspNetCore" Version="9.5.2" />
 	  <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.4" />
 	  <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.4" />
+	  <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.9" />
 	  <PackageReference Include="MySql.Data" Version="8.0.23" />
 	  <PackageReference Include="MySql.EntityFrameworkCore" Version="5.0.0" />
       <PackageReference Include="Telegram.Bot" Version="15.7.1" />
-  </ItemGroup>
-	
-  <ItemGroup>
-    <Compile Update="Properties\Resources.Designer.cs">
-      <DesignTime>True</DesignTime>
-      <AutoGen>True</AutoGen>
-      <DependentUpon>Resources.resx</DependentUpon>
-    </Compile>
-  </ItemGroup>
-	
-  <ItemGroup>
-    <EmbeddedResource Update="Properties\Resources.resx">
-      <Generator>ResXFileCodeGenerator</Generator>
-      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
-    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

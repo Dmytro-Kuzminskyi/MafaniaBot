@@ -1,57 +1,33 @@
 using System;
-using Microsoft.Extensions.Configuration;
-using MafaniaBot.Properties;
-using MafaniaBot.Abstractions;
-using MafaniaBot.Services;
+using MafaniaBot.Models;
 using MafaniaBot.Engines;
+using MafaniaBot.Services;
+using MafaniaBot.Abstractions;
+using Newtonsoft.Json.Serialization;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json.Serialization;
-using MafaniaBot.Models;
 
 namespace MafaniaBot
 {
     public class Startup
     {
         private readonly IConfiguration _configuration;
-        public static string DB_CS { get; private set; }
+        public static string DATABASE_URL { get; private set; }
         public static string BOT_URL { get; private set; }
-
-        private string env;
 
         public Startup(IConfiguration configuration)
         {
             _configuration = configuration;
-            env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            DATABASE_URL = _configuration["Connections:Database"];
+            BOT_URL = _configuration["Bot:Url"];
         }
 
         public void ConfigureServices(IServiceCollection services)
-        {
-            if (env == "Development")
-            {
-                DB_CS = Resources.DEV_DB_CS;
-                BOT_URL = Resources.DEV_BOT_URL;
-            }
-            else
-			{
-                string connUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
-                connUrl = connUrl.Replace("mysql://", string.Empty);
-
-                string creds = connUrl.Split('@')[0];
-                string dbUser = creds.Split(':')[0];
-                string dbPass = creds.Split(':')[1];
-
-                string dbInfo = connUrl.Split('@')[1].Split('?')[0];
-                string dbHost = dbInfo.Split('/')[0];
-                string dbName = dbInfo.Split('/')[1];
-
-                string connStr = $"server={dbHost};user={dbUser};password={dbPass};database={dbName};charset=utf8;persist security info=true";
-                DB_CS = connStr;
-                BOT_URL = Resources.PROD_BOT_URL;
-            }
-                
+        {      
             services    
                 .AddDbContext<MafaniaBotDBContext>()
                 .AddScoped<IUpdateEngine, UpdateEngine>()
