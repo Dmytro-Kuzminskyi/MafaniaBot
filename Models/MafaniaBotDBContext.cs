@@ -12,10 +12,10 @@ namespace MafaniaBot.Models
 
 		public DbSet<PendingAnswer> PendingAnonymousAnswers { get; set; }
 
-		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) 
 		{
 			base.OnConfiguring(optionsBuilder);
-			optionsBuilder.UseMySQL(Startup.DB_CS);
+			optionsBuilder.UseMySQL(Startup.DATABASE_URL);
 		}
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)

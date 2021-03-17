@@ -1,7 +1,7 @@
+using System;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Hosting;
-using System;
 
 namespace MafaniaBot
 {
@@ -9,13 +9,13 @@ namespace MafaniaBot
     {
         public static void Main(string[] args)
         {
-            CreateHostBuilder(args).Build().Run();
+            BuildWebHost(args).Run();
         }
 
-        public static IWebHostBuilder CreateHostBuilder(string[] args)
+        public static IWebHost BuildWebHost(string[] args)
         {
-            var port = Environment.GetEnvironmentVariable("PORT");
-            return WebHost.CreateDefaultBuilder(args).UseStartup<Startup>().UseUrls("http://*:" + port);
+            string port = Environment.GetEnvironmentVariable("PORT");
+            return WebHost.CreateDefaultBuilder(args).UseStartup<Startup>().UseUrls("http://*:" + port).Build();
         }
     }
 }

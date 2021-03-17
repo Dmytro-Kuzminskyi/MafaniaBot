@@ -1,6 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
-using MafaniaBot.Properties;
 using Telegram.Bot;
 using System.Net.Http;
 using System.Collections.Generic;
@@ -13,14 +12,12 @@ namespace MafaniaBot
         public static readonly HttpClient hp = new HttpClient();
         public static IServiceCollection AddTelegramBotClient(this IServiceCollection serviceCollection, IConfiguration configuration)
         {
-            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-            var token = env == "Development" ? Resources.DEV_BOT_TOKEN : Resources.PROD_BOT_TOKEN;
-            var client = new TelegramBotClient(token);
-            var webHookUrl = $"{configuration["SelfHost"]}/api/message/update";
+            var client = new TelegramBotClient(configuration["Bot:Token"]);
+            var webHookUrl = $"{configuration["Host"]}/api/message/update";
 
             try
             {
-               hp.PostAsync($"https://api.telegram.org/bot" + token + "/deleteWebhook",
+               hp.PostAsync($"https://api.telegram.org/bot" + configuration["Bot:Token"] + "/deleteWebhook",
                new FormUrlEncodedContent(new Dictionary<string, string> { { "drop_pending_updates", "true" } })).Wait();
             } 
             catch (HttpRequestException e) 
