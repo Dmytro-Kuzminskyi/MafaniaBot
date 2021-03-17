@@ -14,6 +14,7 @@ namespace MafaniaBot
 
         public static IWebHost BuildWebHost(string[] args)
         {
+            Logger.InitLogger();
             string port = Environment.GetEnvironmentVariable("PORT");
             return WebHost.CreateDefaultBuilder(args).UseStartup<Startup>().UseUrls("http://*:" + port).Build();
         }

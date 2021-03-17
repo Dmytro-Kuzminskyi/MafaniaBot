@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
@@ -19,7 +20,6 @@ namespace MafaniaBot.Commands
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
         {
-            long chatId = message.Chat.Id;
             int userId = message.From.Id;
             string firstname = message.From.FirstName;
             string lastname = message.From.LastName;
@@ -33,23 +33,39 @@ namespace MafaniaBot.Commands
 
             if (message.Chat.Type == ChatType.Private)
 			{
-                using (var db = new MafaniaBotDBContext())
+                try
+                {
+                    using (var db = new MafaniaBotDBContext())
+                    {
+                        var record = db.MyChatMembers
+                            .OrderBy(r => r.UserId)
+                            .Where(r => r.UserId.Equals(userId))
+                            .FirstOrDefault();
+
+                        if (record == null)
+                        {
+                            Logger.Log.Debug($"/START db.MyChatMembers.Add #userId={userId}");
+                            db.Add(new MyChatMember { UserId = userId });
+
+                            await db.SaveChangesAsync();
+                        }
+                    }
+                }
+                catch (Exception ex)
 				{
-                    var record = db.MyChatMembers
-                        .OrderBy(r => r.UserId)
-                        .Where(r => r.UserId.Equals(userId))
-                        .FirstOrDefault();
-
-                    if (record == null)
-					{
-                        db.Add(new MyChatMember { UserId = userId });
-
-                        await db.SaveChangesAsync();
-					}
+                    Logger.Log.Error("Error while processing database", ex);
 				}
 			}
 
-            await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+            Logger.Log.Debug($"/START SendTextMessage #userId={userId} #msg={msg}");
+            try
+            {
+                await botClient.SendTextMessageAsync(userId, msg, ParseMode.Markdown);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error("/START Error while SendTextMessage", ex);
+			}
         }
     }
 }
