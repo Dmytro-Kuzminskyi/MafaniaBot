@@ -30,7 +30,7 @@ namespace MafaniaBot
 			}
 			catch (Exception ex)
 			{
-				Log.Error("Error", ex);
+				Log.Error("Error while initialized logging", ex);
 			}
 		}	
 	}

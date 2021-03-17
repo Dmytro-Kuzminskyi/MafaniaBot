@@ -93,7 +93,7 @@ namespace MafaniaBot.Commands
 					}
 					else
 					{
-						Logger.Log.Error($"/WEATHER Error in weather api endpoint", wex);
+						Logger.Log.Error($"/WEATHER Error in api endpoint", wex);
 					}
 				}
 			}
