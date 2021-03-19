@@ -5,9 +5,9 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot
 {
-	public static class Helpers
+	public static class Helper
 	{
-		public static InlineKeyboardMarkup GetInlineKeyboard(List<KeyValuePair<string, string>> keyboardData, int rowSize, string property)
+		public static InlineKeyboardMarkup CreateInlineKeyboard(List<KeyValuePair<string, string>> keyboardData, int rowSize, string property)
 		{
 			int i = 0;
 			int k = 0;
@@ -44,11 +44,20 @@ namespace MafaniaBot
 					i++; 
 				}
 				keyboardInline[k++] = keyboardButtons;
-			}
-
-			
-
+			}	
 			return new InlineKeyboardMarkup(keyboardInline);
 		}
+
+        public static string ConvertTextToHtmlParseMode(string text)
+        {
+            if (text != null)
+            {
+                text = text.Replace("<", "");
+                text = text.Replace(">", "");
+                text = text.Replace("&", "");
+                return text;
+            }
+            return null;
+        }
 	}
 }

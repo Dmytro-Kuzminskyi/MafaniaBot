@@ -10,21 +10,21 @@ using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
-	public class AskSelectUserCallbackQuery : Entity<CallbackQuery>
-	{
-		public override bool Contains(CallbackQuery callbackQuery)
-		{
-			return callbackQuery.Message.Text.Equals("Выбери кому ты хочешь задать анонимный вопрос:");
-		}
+    public class AskSelectUserCallbackQuery : Entity<CallbackQuery>
+    {
+        public override bool Contains(CallbackQuery callbackQuery)
+        {
+            return callbackQuery.Message.Text.Equals("Выбери кому ты хочешь задать анонимный вопрос:");
+        }
 
-		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
-		{
-			string data = callbackQuery.Data;
-			long chatId = long.Parse(data.Split(':')[0]);
-			int toUserId = int.Parse(data.Split(':')[1]);
+        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
+        {
+            string data = callbackQuery.Data;
+            long chatId = long.Parse(data.Split(':')[0]);
+            int toUserId = int.Parse(data.Split(':')[1]);
 
-			long currentChatId = callbackQuery.Message.Chat.Id;
-			int messageId = callbackQuery.Message.MessageId;
+            long currentChatId = callbackQuery.Message.Chat.Id;
+            int messageId = callbackQuery.Message.MessageId;
             string msg = null;
 
             Logger.Log.Debug($"Initiated SelectUserCallback by #userId={currentChatId} with #data={callbackQuery.Data}");
@@ -42,15 +42,18 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     if (record.ToUserId.ToString().Equals("0") && record.ToUserName == null)
                     {
                         ChatMember member = null;
+
                         try
                         {
                             member = await botClient.GetChatMemberAsync(chatId, toUserId);
+
                             Logger.Log.Debug($"SelectUserCallback #member={toUserId} of #chatId={chatId}");
                         }
                         catch (Exception ex)
                         {
                             Logger.Log.Error($"SelectUserCallback ChatMember not exists", ex);
                         }
+
                         if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || member.Status == ChatMemberStatus.Member)
                         {
                             string firstname = member.User.FirstName;
@@ -58,11 +61,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                             string username = lastname != null ? firstname + " " + lastname : firstname;
 
-                            string mention = "[" + username + "](tg://user?id=" + toUserId + ")";
+                            string mention = $"<a href=\"tg://user?id={toUserId}\">" + Helper.ConvertTextToHtmlParseMode(username) + "</a>";
+
                             msg += "Напиши анонимный вопрос для: " + mention;
 
                             record.ToUserId = toUserId;
                             record.ToUserName = username;
+
+                            Logger.Log.Debug($"SelectUserCallback EditMessageText #chatId={currentChatId} #msg={msg}");
+
+                            await botClient.EditMessageTextAsync(currentChatId, messageId, msg, ParseMode.Html);
 
                             try
                             {
@@ -71,32 +79,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             }
                             catch (Exception ex)
                             {
-                                Logger.Log.Error("SelectUserCallback Error while processing database", ex);
-                            }
-
-                            try
-                            {
-                                Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
-                                await botClient.EditMessageTextAsync(currentChatId, messageId, msg, ParseMode.MarkdownV2);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("SelectUserCallback Error while SendTextMessage", ex);
+                                Logger.Log.Error("SelectUserCallback Error while processing db.PendingAnonymousQuestions", ex);
                             }
                         }
                         else
                         {
                             msg += "Этот пользователь покинул чат!";
 
-                            try
-                            {
-                                Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(currentChatId, msg);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("SelectUserCallback Error while SendTextMessage", ex);
-                            }
+                            Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(currentChatId, msg);
 
                             var recordset = db.AskAnonymousParticipants
                                 .OrderBy(r => r.ChatId)
@@ -108,6 +100,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             List<KeyValuePair<string, string>> keyboardData = new List<KeyValuePair<string, string>>();
                             var tasks = userlist.Select(userId => botClient.GetChatMemberAsync(chatId, userId));
                             ChatMember[] result = await Task.WhenAll(tasks);
+
                             if (result.Length > 0)
                             {
                                 int i = 0;
@@ -124,42 +117,32 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                                     }
                                 });
 
-                                var keyboard = Helpers.GetInlineKeyboard(keyboardData, 3, "CallbackData");
+                                var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData");
 
                                 msg = "Выбери кому ты хочешь задать анонимный вопрос:";
 
-                                try
-                                {
-                                    Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={currentChatId} #messageId={messageId}");
-                                    await botClient.DeleteMessageAsync(currentChatId, messageId);
-                                    Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
-                                    await botClient.SendTextMessageAsync(currentChatId, msg, replyMarkup: keyboard);
-                                }
-                                catch (Exception ex)
-                                {
-                                    Logger.Log.Error("SelectUserCallback Error while SendTextMessage", ex);
-                                }
-                            }                            
+                                Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={currentChatId} #messageId={messageId}");
+
+                                await botClient.DeleteMessageAsync(currentChatId, messageId);
+
+                                Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
+
+                                await botClient.SendTextMessageAsync(currentChatId, msg, replyMarkup: keyboard);
+                            }
                         }
                     }
                     else
                     {
-                        try
-                        {
-                            Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={currentChatId} #messageId={messageId}");
-                            await botClient.DeleteMessageAsync(currentChatId, messageId);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("SelectUserCallback Error while DeleteMessage", ex);
-                        }
+                        Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={currentChatId} #messageId={messageId}");
+
+                        await botClient.DeleteMessageAsync(currentChatId, messageId);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("SelectUserCallback Error while processing database", ex);
+                Logger.Log.Error("SelectUserCallback ---", ex);
             }
-		}
-	}
+        }
+    }
 }

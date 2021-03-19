@@ -27,9 +27,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			string lastname = callbackQuery.From.LastName;
 			string msg = null;
 
-			string mention = lastname != null ?
-				"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
-				"[" + firstname + "](tg://user?id=" + userId + ")";
+            string mention = lastname != null ?
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+
             try
             {
                 using (var db = new MafaniaBotDBContext())
@@ -42,31 +43,36 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (record != null)
                     {
-                        Logger.Log.Debug($"&ask_anon_deactivate& Delete record: (#id={record.Id} #chatId={record.ChatId} #userId={record.UserId}) from db.AskAnonymousParticipants");
-                        db.AskAnonymousParticipants.Remove(record);
-                        await db.SaveChangesAsync();
+                        try
+                        {
+                            Logger.Log.Debug($"&ask_anon_deactivate& Delete record: (#id={record.Id} #chatId={record.ChatId} #userId={record.UserId}) from db.AskAnonymousParticipants");
+
+                            db.AskAnonymousParticipants.Remove(record);
+                            await db.SaveChangesAsync();
+                        }
+                        catch(Exception ex)
+                        {
+                            Logger.Log.Error("&ask_anon_deactivate& Error while processing db.AskAnonymousParticipants", ex);
+                        }
+
                         msg += "Пользователь " + mention + " отписался от анонимных вопросов!";
                     }
                     else
                     {
                         Logger.Log.Debug("&ask_anon_deactivate& Record not exists in db.AskAnonymousParticipants");
+
                         msg += "Пользователь " + mention + " не подписан на анонимные вопросы!";
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("&ask_anon_deactivate& Error while processing database", ex);
-            }
 
-            try
-            {
-                Logger.Log.Debug($"&ask_anon_deactivate& SendTextMessage #chatId={chatId} #msg={msg}");
-                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+            Logger.Log.Debug($"&ask_anon_deactivate& SendTextMessage #chatId={chatId} #msg={msg}");
+
+            await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
+
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("&ask_anon_deactivate& Error while SendTextMessage", ex);
+                Logger.Log.Error("&ask_anon_deactivate& ---", ex);
             }
         }
     }

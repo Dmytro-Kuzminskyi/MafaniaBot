@@ -33,8 +33,8 @@ namespace MafaniaBot.Handlers
                     msg += "\n/help - список доступных команд.";
 
                     Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-                    await Task.Delay(3000);
-                    await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
+                    
+                    await botClient.SendTextMessageAsync(chatId, msg);
                 }
                 else
                 {
@@ -45,21 +45,21 @@ namespace MafaniaBot.Handlers
                     if (!user.IsBot)
                     {
                         string mention = lastname != null ?
-                            "[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
-                            "[" + firstname + "](tg://user?id=" + userId + ")";
+                            $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                            $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
 
                         msg += mention + ", добро пожаловать в Ханство!";
 
                         Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-                        await Task.Delay(3000);
-                        await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Markdown);
+                        
+                        await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
                     }
 
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("NewChatMember HANDLER Error while SendTextMessage", ex);
+                Logger.Log.Error("NewChatMember HANDLER ---", ex);
             }
         }
     }

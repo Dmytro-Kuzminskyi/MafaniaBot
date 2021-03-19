@@ -43,16 +43,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                         {
                             msg += "Сначала закончи с предыдущим вопросом!";
 
-                            try
-                            {
-                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(recipientId, msg);
-                                return;
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
-                            }
+                            Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(recipientId, msg);
+                            return;
                         }
 
                         var recordPendingAnswer = db.PendingAnonymousAnswers
@@ -70,9 +64,32 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             string lastname = member.User.LastName;
 
                             string username = lastname != null ? firstname + " " + lastname : firstname;
+                          
+                            try
+                            {
+                                question = db.AnonymousQuestions
+                                    .OrderBy(r => r.Id)
+                                    .Where(r => r.Id.Equals(questionId))
+                                    .Where(r => r.ToUserId.Equals(recipientId))
+                                    .Select(r => r.Text)
+                                    .LastOrDefault();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while processing db.AnonymousQuestions", ex);
+                            }
+
+                            msg += "Напиши ответ на анонимный вопрос:" +
+                                "\n" + question;
+
+                            Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(recipientId, msg);
+
                             try
                             {
                                 Logger.Log.Debug($"answer& Add record: (#chatId={chatId} #fromUserId={recipientId} #fromUserName={username} #toUserId={senderId} #messageId={callbackQuery.Message.MessageId}) to db.PendingAnonymousAnswers");
+
                                 db.Add(new PendingAnswer
                                 {
                                     ChatId = chatId,
@@ -86,49 +103,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             }
                             catch (Exception ex)
                             {
-                                Logger.Log.Error("answer& Error while processing database", ex);
-                            }
-
-                            try
-                            {
-                                question = db.AnonymousQuestions
-                                    .OrderBy(r => r.Id)
-                                    .Where(r => r.Id.Equals(questionId))
-                                    .Where(r => r.ToUserId.Equals(recipientId))
-                                    .Select(r => r.Text)
-                                    .FirstOrDefault();
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("answer& Error while processing database", ex);
-                            }
-
-                            msg += "Напиши ответ на анонимный вопрос:" +
-                                "\n" + question;
-
-                            try
-                            {
-                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(recipientId, msg);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
+                                Logger.Log.Error("answer& Error while processing db.PendingAnonymousAnswers", ex);
                             }
                         }
                         else
                         {
                             msg += "Сначала ответь на вопрос!";
 
-                            try
-                            {
-                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(recipientId, msg);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
-                            }
+                            Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(recipientId, msg);
                             return;
                         }
                     }
@@ -137,20 +121,14 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 {
                     msg += "Этот вопрос не для тебя!";
 
-                    try
-                    {
-                        Logger.Log.Debug($"answer& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
-                        await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log.Error("answer& Error while SendTextMessage", ex);
-                    }
+                    Logger.Log.Debug($"answer& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
+
+                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
                 }
             } 
             catch (Exception ex)
             {
-                Logger.Log.Error("answer& Error while processing callbackQuery", ex);
+                Logger.Log.Error("answer& ---", ex);
             }
 		}
 	}

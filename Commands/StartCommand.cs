@@ -25,15 +25,15 @@ namespace MafaniaBot.Commands
             string firstname = message.From.FirstName;
             string lastname = message.From.LastName;
 
-            string mention = lastname != null ? 
-                "[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
-                "[" + firstname + "](tg://user?id=" + userId + ")";
+            string mention = lastname != null ?
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
 
-            string msg = "Привет, " + mention + "!" + 
+            string msg = "Привет, " + mention + "!" +
                 "\n/help - список доступных команд.";
 
             if (message.Chat.Type == ChatType.Private)
-			{
+            {
                 try
                 {
                     using (var db = new MafaniaBotDBContext())
@@ -46,6 +46,7 @@ namespace MafaniaBot.Commands
                         if (record == null)
                         {
                             Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
+
                             db.Add(new MyChatMember { UserId = userId });
                             await db.SaveChangesAsync();
                         }
@@ -56,20 +57,14 @@ namespace MafaniaBot.Commands
                     }
                 }
                 catch (Exception ex)
-				{
-                    Logger.Log.Error("/START Error while processing database", ex);
-				}
-			}
-
-            try
-            {
-                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+                {
+                    Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
+                }
             }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("/START Error while SendTextMessage", ex);
-			}
+
+            Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+            await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
         }
     }
 }

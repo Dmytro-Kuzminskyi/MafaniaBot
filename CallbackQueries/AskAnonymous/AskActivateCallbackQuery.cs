@@ -27,9 +27,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			string lastname = callbackQuery.From.LastName;
 			string msg = null;
 
-			string mention = lastname != null ?
-				"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
-				"[" + firstname + "](tg://user?id=" + userId + ")";
+            string mention = lastname != null ?
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+
             try
             {
                 using (var db = new MafaniaBotDBContext())
@@ -42,9 +43,12 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     if (recordReg == null)
                     {
                         msg += mention + ", сначала зарегистрируйся!";
+
                         Logger.Log.Debug("&ask_anon_activate& Record not exists in db.MyChatMembers");
+
                         Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
-                        await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
+
+                        await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
                         return;
                     }
 
@@ -56,31 +60,34 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (record == null)
                     {
-                        Logger.Log.Debug($"&ask_anon_activate& Add record: (#chatId={chatId} #userId={userId}) to db.AskAnonymousParticipants");
-                        db.Add(new Participant { ChatId = chatId, UserId = userId });
-                        await db.SaveChangesAsync();
+                        try
+                        {
+                            Logger.Log.Debug($"&ask_anon_activate& Add record: (#chatId={chatId} #userId={userId}) to db.AskAnonymousParticipants");
+
+                            db.Add(new Participant { ChatId = chatId, UserId = userId });
+                            await db.SaveChangesAsync();
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log.Error("&ask_anon_activate& Error while processing db.AskAnonymousParticipants", ex);
+                        }
+
                         msg += "Пользователь " + mention + " подписался на анонимные вопросы!";
                     }
                     else
                     {
                         Logger.Log.Debug($"&ask_anon_activate& Record exists: (#id={record.Id} #chatId={chatId} #userId={record.UserId}) in db.AskAnonymousParticipants");
+
                         msg += "Пользователь " + mention + " уже подписан на анонимные вопросы!";
                     }
                 }
+                Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
+
+                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
             }
             catch(Exception ex)
             {
-                Logger.Log.Error("&ask_anon_activate& Error while processing database", ex);
-            }
-
-            try
-            {
-                Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
-                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("&ask_anon_activate& Error while SendTextMessage", ex);
+                Logger.Log.Error("&ask_anon_activate& ---", ex);
             }
         }
     }

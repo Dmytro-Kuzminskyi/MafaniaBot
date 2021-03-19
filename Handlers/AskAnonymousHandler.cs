@@ -10,20 +10,20 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.Handlers
 {
-	public class AskAnonymousHandler : Entity<Message>
-	{
-		public override bool Contains(Message message)
-		{
-			if (message.Chat.Type != ChatType.Private)
-				return false;
+    public class AskAnonymousHandler : Entity<Message>
+    {
+        public override bool Contains(Message message)
+        {
+            if (message.Chat.Type != ChatType.Private)
+                return false;
 
-			return !message.From.IsBot;
-		}
+            return !message.From.IsBot;
+        }
 
-		public override async Task Execute(Message message, ITelegramBotClient botClient)
-		{
-			long chatId = message.Chat.Id;
-			int userId = message.From.Id;
+        public override async Task Execute(Message message, ITelegramBotClient botClient)
+        {
+            long chatId = message.Chat.Id;
+            int userId = message.From.Id;
 
             Logger.Log.Debug($"AskAnonymous HANDLER triggered in #chatId={chatId} #userId={userId}");
 
@@ -41,21 +41,25 @@ namespace MafaniaBot.Handlers
                     if (recordPendingQuestion != null)
                     {
                         if (!recordPendingQuestion.ToUserId.ToString().Equals("0") && recordPendingQuestion.ToUserName != null)
-                        {                       
+                        {
                             string question = message.Text;
 
                             try
                             {
                                 Logger.Log.Debug($"AskAnonymous HANDLER Add record: (#fromUserId={recordPendingQuestion.FromUserId}#toUserId={recordPendingQuestion.ToUserId}#text={question}) to db.AnonymousQuestions");
-                                db.Add(new Question { 
-                                    FromUserId = recordPendingQuestion.FromUserId, 
+
+                                db.Add(new Question
+                                {
+                                    FromUserId = recordPendingQuestion.FromUserId,
                                     ToUserId = recordPendingQuestion.ToUserId,
-                                    Text = question });
+                                    Text = question
+                                });
+
                                 await db.SaveChangesAsync();
                             }
                             catch (Exception ex)
                             {
-                                Logger.Log.Error("AskAnonymous HANDLER Error while processing database", ex);
+                                Logger.Log.Error("AskAnonymous HANDLER Error while processing db.AnonymousQuestions", ex);
                             }
 
                             var recordQuestion = db.AnonymousQuestions
@@ -63,10 +67,11 @@ namespace MafaniaBot.Handlers
                                 .Where(r => r.FromUserId.Equals(recordPendingQuestion.FromUserId))
                                 .Where(r => r.ToUserId.Equals(recordPendingQuestion.ToUserId))
                                 .Where(r => r.Text.Equals(question))
-                                .FirstOrDefault();
+                                .LastOrDefault();                           
 
-                            msg += "Новый анонимный вопрос для [" + recordPendingQuestion.ToUserName +
-                                "](tg://user?id=" + recordPendingQuestion.ToUserId + ")";
+                            string mention = $"<a href=\"tg://user?id={recordPendingQuestion.ToUserId}\">" + Helper.ConvertTextToHtmlParseMode(recordPendingQuestion.ToUserName) + "</a>";
+
+                            msg += "Новый анонимный вопрос для " + mention + "!";                        
 
                             var buttonShow = InlineKeyboardButton.WithCallbackData("Посмотреть",
                                 "show&" + recordQuestion.ToUserId + ":" + recordQuestion.Id);
@@ -74,27 +79,25 @@ namespace MafaniaBot.Handlers
                                 "answer&" + recordQuestion.FromUserId + ":" + recordQuestion.ToUserId + ":" + recordQuestion.Id);
 
                             var keyboard = new InlineKeyboardMarkup(new InlineKeyboardButton[] { buttonShow, buttonAnswer });
-                            try
-                            {
-                                Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(chatId, "Вопрос успешно отправлен!");
-                                Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingQuestion.ChatId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(recordPendingQuestion.ChatId, msg, ParseMode.MarkdownV2, replyMarkup: keyboard);
 
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("AskAnonymous HANDLER Error while SendTextMessage", ex);
-                            }
+                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(chatId, "Вопрос успешно отправлен!");
+
+                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingQuestion.ChatId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(recordPendingQuestion.ChatId, msg, ParseMode.Html, replyMarkup: keyboard);
+
                             try
                             {
                                 Logger.Log.Debug($"AskAnonymous HANDLER Delete record: (#id={recordPendingQuestion.Id} #chatId={recordPendingQuestion.ChatId} #fromUserId={recordPendingQuestion.FromUserId} #toUserId={recordPendingQuestion.ToUserId} #toUserName={recordPendingQuestion.ToUserName}) from db.PendingAnonymousQuestions");
+
                                 db.Remove(recordPendingQuestion);
                                 await db.SaveChangesAsync();
                             }
                             catch (Exception ex)
                             {
-                                Logger.Log.Error("AskAnonymous HANDLER Error while processing database", ex);
+                                Logger.Log.Error("AskAnonymous HANDLER Error while processing db.PendingAnonymousQuestions", ex);
                             }
                         }
                     }
@@ -106,49 +109,41 @@ namespace MafaniaBot.Handlers
 
                     if (recordPendingAnswer != null)
                     {
-                        try
-                        {
-                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg=Ответ успешно отправлен!");
-                            await botClient.SendTextMessageAsync(chatId, "Ответ успешно отправлен!");
-                        } 
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("AskAnonymous HANDLER Error while SendTextMessage", ex);
-                        }
+                        Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg=Ответ успешно отправлен!");
 
-                        string mention = "[" + recordPendingAnswer.FromUserName + "](tg://user?id=" + recordPendingAnswer.FromUserId + ")";
+                        await botClient.SendTextMessageAsync(chatId, "Ответ успешно отправлен!");
+
+                        string mention = $"<a href=\"tg://user?id={recordPendingAnswer.FromUserId}\">" + Helper.ConvertTextToHtmlParseMode(recordPendingAnswer.FromUserName) + "</a>";
 
                         msg += "Ответ пользователя " + mention + " на ваш вопрос:" +
-                            "\n" + message.Text;
-                        try
-                        {
-                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingAnswer.ToUserId} #msg={msg}");
-                            await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.MarkdownV2);
-                            Logger.Log.Debug($"AskAnonymous HANDLER DeleteMessage #chatId={recordPendingAnswer.ChatId} #messageId={msg}");
-                            await botClient.DeleteMessageAsync(recordPendingAnswer.ChatId, recordPendingAnswer.MessageId);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("AskAnonymous HANDLER Error while SendTextMessage", ex);
-                        }
+                            "\n" + Helper.ConvertTextToHtmlParseMode(message.Text);
+
+                        Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingAnswer.ToUserId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Html);
+
+                        Logger.Log.Debug($"AskAnonymous HANDLER DeleteMessage #chatId={recordPendingAnswer.ChatId} #messageId={msg}");
+
+                        await botClient.DeleteMessageAsync(recordPendingAnswer.ChatId, recordPendingAnswer.MessageId);
 
                         try
                         {
-                            Logger.Log.Debug($"AskAnonymous HANDLER Delete record: (#id={recordPendingAnswer.Id} #chatId={recordPendingAnswer.ChatId} #fromUserId={recordPendingAnswer.FromUserId} #fromUserName={recordPendingAnswer.FromUserName} #messageId={recordPendingAnswer.MessageId}");
+                            Logger.Log.Debug($"AskAnonymous HANDLER Delete record: (#id={recordPendingAnswer.Id} #chatId={recordPendingAnswer.ChatId} #fromUserId={recordPendingAnswer.FromUserId} #fromUserName={recordPendingAnswer.FromUserName} #messageId={recordPendingAnswer.MessageId}) from db.PendingAnonymousAnswers");
+
                             db.Remove(recordPendingAnswer);
                             await db.SaveChangesAsync();
                         }
                         catch (Exception ex)
                         {
-                            Logger.Log.Error("AskAnonymous HANDLER Error while processing database", ex);
+                            Logger.Log.Error("AskAnonymous HANDLER Error while processing db.PendingAnonymousAnswers", ex);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("AskAnonymous HANDLER Error while processing database", ex);
+                Logger.Log.Error("AskAnonymous HANDLER ---", ex);
             }
-		}
-	}
+        }
+    }
 }

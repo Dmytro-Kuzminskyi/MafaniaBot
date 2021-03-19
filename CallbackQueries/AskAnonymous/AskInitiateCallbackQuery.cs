@@ -28,9 +28,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			string lastname = callbackQuery.From.LastName;
 			string msg = null;
 
-			string mention = lastname != null ?
-				"[" + firstname + " " + lastname + "](tg://user?id=" + userId + ")" :
-				"[" + firstname + "](tg://user?id=" + userId + ")";
+            string mention = lastname != null ?
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+
             try
             {
                 using (var db = new MafaniaBotDBContext())
@@ -43,15 +44,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     if (recordReg == null)
                     {
                         msg += mention + ", сначала зарегистрируйся!";
-                        try
-                        {
-                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={chatId} #msg={msg}");
-                            await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
-                        }
+
+                        Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={chatId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
                         return;
                     }
                     else
@@ -68,15 +64,9 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         msg += "Сначала ответь на вопрос!";
 
-                        try
-                        {
-                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
-                            await botClient.SendTextMessageAsync(userId, msg);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
-                        }
+                        Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(userId, msg);
                         return;
                     }
 
@@ -89,15 +79,9 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         msg += "Сначала закончи с предыдущим вопросом!";
 
-                        try
-                        {
-                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
-                            await botClient.SendTextMessageAsync(userId, msg);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
-                        }
+                        Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(userId, msg);
                         return;
                     }
 
@@ -112,15 +96,9 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
 
-                        try
-                        {
-                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
-                            await botClient.SendTextMessageAsync(userId, msg);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
-                        }
+                        Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(userId, msg);
                     }
                     else
                     {
@@ -143,51 +121,40 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                                 }
                             });
 
-                            var keyboard = Helpers.GetInlineKeyboard(keyboardData, 3, "CallbackData");
+                            var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData");                        
+
+                            msg += "Выбери кому ты хочешь задать анонимный вопрос:";
+
+                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(userId, msg, replyMarkup: keyboard);
 
                             try
                             {
                                 Logger.Log.Debug($"&ask_anon_question& Add record: (#chatId={chatId} #userId={userId}) to db.PendingAnonymousQuestions");
+
                                 db.Add(new PendingQuestion { ChatId = chatId, FromUserId = userId });
                                 await db.SaveChangesAsync();
                             }
                             catch (Exception ex)
                             {
-                                Logger.Log.Error("&ask_anon_question& Error while processing database", ex);
-                            }
-
-                            msg += "Выбери кому ты хочешь задать анонимный вопрос:";
-
-                            try
-                            {
-                                Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(userId, msg, replyMarkup: keyboard);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
+                                Logger.Log.Error("&ask_anon_question& Error while processing db.PendingAnonymousQuestions", ex);
                             }
                         }
                         else
                         {
                             msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
 
-                            try
-                            {
-                                Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
-                                await botClient.SendTextMessageAsync(userId, msg);
-                            }
-                            catch (Exception ex)
-                            {
-                                Logger.Log.Error("&ask_anon_question& Error while SendTextMessage", ex);
-                            }
+                            Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
+
+                            await botClient.SendTextMessageAsync(userId, msg);
                         }
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("&ask_anon_question& Error while processing callbackQuery", ex);
+                Logger.Log.Error("&ask_anon_question& ---", ex);
             }
 		}
 	}
