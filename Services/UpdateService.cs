@@ -23,6 +23,7 @@ namespace MafaniaBot.Services
             _handlers = new List<Entity<Message>>
             { 
                 new NewChatMemberHandler(),
+                new LeftChatMemberHandler(),
                 new AskAnonymousHandler()
             };
             _callbackQueries = new List<Entity<CallbackQuery>>

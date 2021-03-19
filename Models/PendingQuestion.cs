@@ -13,10 +13,8 @@ namespace MafaniaBot.Models
 		[Required]
 		public int FromUserId { get; set; }
 
-		[Required]
 		public int ToUserId { get; set; }
 
-		[Required]
 		public string ToUserName { get; set; }
 	}
 }

@@ -1,7 +1,8 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
-using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
+using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
@@ -11,79 +12,146 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 	{
 		public override bool Contains(CallbackQuery callbackQuery)
 		{
-			return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для") && callbackQuery.Data.StartsWith("&");
+			return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для") && 
+                callbackQuery.Data.StartsWith("answer&");
 		}
 
 		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
 		{
 			long chatId = callbackQuery.Message.Chat.Id;
-			string data = callbackQuery.Data.Substring(1);
-			int senderId = int.Parse(data.Split(':')[0]);
+			string data = callbackQuery.Data.Split('&')[1];
+            int senderId = int.Parse(data.Split(':')[0]);
 			int recipientId = int.Parse(data.Split(':')[1]);
-			string question = data.Split(':')[2];
-			string msg = null;
+			int questionId = int.Parse(data.Split(':')[2]);
+            string question = null;
+            string msg = null;
 
-			if (callbackQuery.From.Id.Equals(recipientId))
-			{
-				using (var db = new MafaniaBotDBContext())
-				{
-					var recordPendingQuestion = db.PendingAnonymousQuestions
-						.OrderBy(r => r.FromUserId)
-						.Where(r => r.FromUserId.Equals(recipientId))
-						.FirstOrDefault();
+            Logger.Log.Debug($"Initiated answer& from #chatId={chatId} by #userId={callbackQuery.From.Id} with #data={callbackQuery.Data}");
 
-					if (recordPendingQuestion != null)
-					{
-						msg += "Сначала закончи с предыдущим вопросом!";
-						await botClient.SendTextMessageAsync(recipientId, msg);
-						return;
-					}
+            try
+            {
+                if (callbackQuery.From.Id.Equals(recipientId))
+                {
+                    using (var db = new MafaniaBotDBContext())
+                    {
+                        var recordPendingQuestion = db.PendingAnonymousQuestions
+                            .OrderBy(r => r.FromUserId)
+                            .Where(r => r.FromUserId.Equals(recipientId))
+                            .FirstOrDefault();
 
-					var recordPendingAnswer = db.PendingAnonymousAnswers
-						.OrderBy(r => r.FromUserId)
-						.Where(r => r.FromUserId.Equals(recipientId))
-						.Where(r => r.ChatId.Equals(chatId))
-						.Where(r => r.ToUserId.Equals(senderId))
-						.FirstOrDefault();
+                        if (recordPendingQuestion != null)
+                        {
+                            msg += "Сначала закончи с предыдущим вопросом!";
 
-					if (recordPendingAnswer == null)
-					{
-						ChatMember member = await botClient.GetChatMemberAsync(chatId, recipientId);
+                            try
+                            {
+                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+                                await botClient.SendTextMessageAsync(recipientId, msg);
+                                return;
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
+                            }
+                        }
 
-						string firstname = member.User.FirstName;
-						string lastname = member.User.LastName;
+                        var recordPendingAnswer = db.PendingAnonymousAnswers
+                            .OrderBy(r => r.FromUserId)
+                            .Where(r => r.FromUserId.Equals(recipientId))
+                            .Where(r => r.ChatId.Equals(chatId))
+                            .Where(r => r.ToUserId.Equals(senderId))
+                            .FirstOrDefault();
 
-						string username = lastname != null ? firstname + " " + lastname : firstname;
+                        if (recordPendingAnswer == null)
+                        {
+                            ChatMember member = await botClient.GetChatMemberAsync(chatId, recipientId);
 
-						db.Add(new PendingAnswer
-						{
-							ChatId = chatId,
-							FromUserId = recipientId,
-							FromUserName = username,
-							ToUserId = senderId,
-							MessageId = callbackQuery.Message.MessageId
-						});
+                            string firstname = member.User.FirstName;
+                            string lastname = member.User.LastName;
 
-						await db.SaveChangesAsync();
+                            string username = lastname != null ? firstname + " " + lastname : firstname;
+                            try
+                            {
+                                Logger.Log.Debug($"answer& Add record: (#chatId={chatId} #fromUserId={recipientId} #fromUserName={username} #toUserId={senderId} #messageId={callbackQuery.Message.MessageId}) to db.PendingAnonymousAnswers");
+                                db.Add(new PendingAnswer
+                                {
+                                    ChatId = chatId,
+                                    FromUserId = recipientId,
+                                    FromUserName = username,
+                                    ToUserId = senderId,
+                                    MessageId = callbackQuery.Message.MessageId
+                                });
 
-						msg += "Напиши ответ на анонимный вопрос:" +
-							"\n" + question;
+                                await db.SaveChangesAsync();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while processing database", ex);
+                            }
 
-						await botClient.SendTextMessageAsync(recipientId, msg);
-					}
-					else
-					{
-						msg += "Сначала ответь на вопрос!";
-						await botClient.SendTextMessageAsync(recipientId, msg);
-						return;
-					}
-				}
-			}
-			else
-			{
-				msg += "Этот вопрос не для тебя!";
-				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
-			}
+                            try
+                            {
+                                question = db.AnonymousQuestions
+                                    .OrderBy(r => r.Id)
+                                    .Where(r => r.Id.Equals(questionId))
+                                    .Where(r => r.ToUserId.Equals(recipientId))
+                                    .Select(r => r.Text)
+                                    .FirstOrDefault();
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while processing database", ex);
+                            }
+
+                            msg += "Напиши ответ на анонимный вопрос:" +
+                                "\n" + question;
+
+                            try
+                            {
+                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+                                await botClient.SendTextMessageAsync(recipientId, msg);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
+                            }
+                        }
+                        else
+                        {
+                            msg += "Сначала ответь на вопрос!";
+
+                            try
+                            {
+                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+                                await botClient.SendTextMessageAsync(recipientId, msg);
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.Log.Error("answer& Error while SendTextMessage", ex);
+                            }
+                            return;
+                        }
+                    }
+                }
+                else
+                {
+                    msg += "Этот вопрос не для тебя!";
+
+                    try
+                    {
+                        Logger.Log.Debug($"answer& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
+                        await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.Error("answer& Error while SendTextMessage", ex);
+                    }
+                }
+            } 
+            catch (Exception ex)
+            {
+                Logger.Log.Error("answer& Error while processing callbackQuery", ex);
+            }
 		}
 	}
 }

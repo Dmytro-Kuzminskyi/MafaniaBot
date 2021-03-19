@@ -20,6 +20,7 @@ namespace MafaniaBot.Commands
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
         {
+            long chatId = message.Chat.Id;
             int userId = message.From.Id;
             string firstname = message.From.FirstName;
             string lastname = message.From.LastName;
@@ -44,23 +45,26 @@ namespace MafaniaBot.Commands
 
                         if (record == null)
                         {
-                            Logger.Log.Debug($"/START db.MyChatMembers.Add #userId={userId}");
+                            Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
                             db.Add(new MyChatMember { UserId = userId });
-
                             await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
                         }
                     }
                 }
                 catch (Exception ex)
 				{
-                    Logger.Log.Error("Error while processing database", ex);
+                    Logger.Log.Error("/START Error while processing database", ex);
 				}
 			}
 
-            Logger.Log.Debug($"/START SendTextMessage #userId={userId} #msg={msg}");
             try
             {
-                await botClient.SendTextMessageAsync(userId, msg, ParseMode.Markdown);
+                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Markdown);
             }
             catch (Exception ex)
             {

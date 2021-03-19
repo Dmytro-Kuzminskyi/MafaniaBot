@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -35,8 +36,16 @@ namespace MafaniaBot.Commands
 			});
 
 			string msg = "Меню анонимных вопросов";
-			
-			await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboard);
+
+            try
+            {
+                Logger.Log.Debug($"/ASKMENU SendTextMessage #chatId={chatId} #msg={msg}");
+                await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboard);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error("/ASKMENU Error while SendTextMessage", ex);
+            }
 		}
 	}
 }
