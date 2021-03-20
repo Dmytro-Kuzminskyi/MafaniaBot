@@ -128,6 +128,27 @@ namespace MafaniaBot.Handlers
 
                         try
                         {
+                            var recordQuestion = db.AnonymousQuestions
+                                .OrderBy(r => r.Id)
+                                .Where(r => r.FromUserId.Equals(recordPendingAnswer.ToUserId))
+                                .Where(r => r.ToUserId.Equals(recordPendingAnswer.FromUserId))
+                                .LastOrDefault();
+
+                            if (recordQuestion != null)
+                            {
+                                Logger.Log.Debug($"AskAnonymous HANDLER Delete record: (#id={recordQuestion.Id} #fromUserId={recordQuestion.FromUserId} #toUserId={recordQuestion.ToUserId} #text={recordQuestion.Text}) from db.AnonymousQuestions");
+
+                                db.Remove(recordQuestion);
+                                await db.SaveChangesAsync();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log.Error("AskAnonymous HANDLER Error while processing db.AnonymousQuestions", ex);
+                        }
+
+                        try
+                        {
                             Logger.Log.Debug($"AskAnonymous HANDLER Delete record: (#id={recordPendingAnswer.Id} #chatId={recordPendingAnswer.ChatId} #fromUserId={recordPendingAnswer.FromUserId} #fromUserName={recordPendingAnswer.FromUserName} #messageId={recordPendingAnswer.MessageId}) from db.PendingAnonymousAnswers");
 
                             db.Remove(recordPendingAnswer);
