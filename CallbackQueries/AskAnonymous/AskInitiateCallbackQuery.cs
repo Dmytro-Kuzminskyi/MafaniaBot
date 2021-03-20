@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using MafaniaBot.Models;
@@ -6,7 +7,7 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using System;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -121,13 +122,17 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                                 }
                             });
 
-                            var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData");                        
+                            var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData").InlineKeyboard.ToList();
+                                
+                            var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "CANCEL") } ;
+
+                            keyboard.Add(cancelBtn);
 
                             msg += "Выбери кому ты хочешь задать анонимный вопрос:";
 
                             Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
-                            await botClient.SendTextMessageAsync(userId, msg, replyMarkup: keyboard);
+                            await botClient.SendTextMessageAsync(userId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
 
                             try
                             {

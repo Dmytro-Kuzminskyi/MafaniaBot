@@ -7,6 +7,7 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -20,12 +21,63 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
         public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
         {
             string data = callbackQuery.Data;
-            long chatId = long.Parse(data.Split(':')[0]);
+            int messageId = 0;
+            long chatId = 0;
+            string msg = null;
+
+            if (data.Equals("CANCEL"))
+            {
+                try
+                {
+                    Logger.Log.Debug($"Initiated CancelSelectUserCallback by #userId={callbackQuery.From.Id} with #data={callbackQuery.Data}");
+                    chatId = callbackQuery.Message.Chat.Id;
+                    messageId = callbackQuery.Message.MessageId;
+                    msg = "Вы отменили анонимный вопрос!";
+
+                    Logger.Log.Debug($"&cancel_ask_select_user& DeleteMessage #chatId={chatId} #messageId={messageId}");
+
+                    await botClient.DeleteMessageAsync(chatId, messageId);
+
+                    Logger.Log.Debug($"&cancel_ask_select_user& SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg);
+
+                    using (var db = new MafaniaBotDBContext())
+                    {
+                        try
+                        {
+                            var recordPendingQuestion = db.PendingAnonymousQuestions
+                                .OrderBy(r => r.FromUserId)
+                                .Where(r => r.FromUserId.Equals(callbackQuery.From.Id))
+                                .FirstOrDefault();
+
+                            if (recordPendingQuestion != null)
+                            {
+                                Logger.Log.Debug($"CancelSelectUserCallback Delete record: (#id={recordPendingQuestion.Id} #chatId={recordPendingQuestion.ChatId} #fromUserId={recordPendingQuestion.FromUserId} #toUserId={recordPendingQuestion.ToUserId} #toUserName={recordPendingQuestion.ToUserName}) from db.PendingAnonymousQuestions");
+
+                                db.Remove(recordPendingQuestion);
+                                await db.SaveChangesAsync();
+                            }
+                        } 
+                        catch(Exception ex)
+                        {
+                            Logger.Log.Error("CancelSelectUserCallback Error while processing db.PendingAnonymousQuestions", ex);
+                        }
+                    }
+
+                    return;
+                } 
+                catch (Exception ex)
+                {
+                    Logger.Log.Error("CancelSelectUserCallback ---", ex);
+                }
+            }
+
+            chatId = long.Parse(data.Split(':')[0]);
             int toUserId = int.Parse(data.Split(':')[1]);
 
             long currentChatId = callbackQuery.Message.Chat.Id;
-            int messageId = callbackQuery.Message.MessageId;
-            string msg = null;
+            messageId = callbackQuery.Message.MessageId;            
 
             Logger.Log.Debug($"Initiated SelectUserCallback by #userId={currentChatId} with #data={callbackQuery.Data}");
 
@@ -117,7 +169,11 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                                     }
                                 });
 
-                                var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData");
+                                var keyboard = Helper.CreateInlineKeyboard(keyboardData, 3, "CallbackData").InlineKeyboard.ToList();
+
+                                var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "CANCEL") };
+
+                                keyboard.Add(cancelBtn);
 
                                 msg = "Выбери кому ты хочешь задать анонимный вопрос:";
 
@@ -127,7 +183,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                                 Logger.Log.Debug($"SelectUserCallback SendTextMessage #chatId={currentChatId} #msg={msg}");
 
-                                await botClient.SendTextMessageAsync(currentChatId, msg, replyMarkup: keyboard);
+                                await botClient.SendTextMessageAsync(currentChatId, msg, replyMarkup: new InlineKeyboardMarkup (keyboard));
                             }
                         }
                     }
