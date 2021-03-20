@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -25,6 +26,30 @@ namespace MafaniaBot.Commands
             try
             {
                 long chatId = message.Chat.Id;
+                int messageId = message.MessageId;
+                string msg = null;
+
+                try
+                {
+                    Logger.Log.Debug($"/ASKMENU DeleteMessage #chatId={chatId} #messageId={messageId}");
+
+                    await botClient.DeleteMessageAsync(chatId, messageId);
+                }
+
+                catch (ApiRequestException apiEx)
+                {
+                    if (apiEx.ErrorCode == 400)
+                    {
+                        Logger.Log.Warn("/ASKMENU Bad request: message can't be deleted");
+
+                        msg = "Мне нужно право на удаление сообщений чтобы выполнить эту команду!";
+
+                        Logger.Log.Debug($"/ASKMENU SendTextMessage #chatId={chatId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(chatId, msg);
+                        return;
+                    }
+                }
 
                 var buttonReg = InlineKeyboardButton.WithUrl("Зарегистрироваться", Startup.BOT_URL);
                 var buttonActivate = InlineKeyboardButton.WithCallbackData("Подписаться", "&ask_anon_activate&");
@@ -37,7 +62,7 @@ namespace MafaniaBot.Commands
                     new InlineKeyboardButton[] { buttonAskAnon }
                 });
 
-                string msg = "Меню анонимных вопросов";
+                msg = "Меню анонимных вопросов";
 
                 Logger.Log.Debug($"/ASKMENU SendTextMessage #chatId={chatId} #msg={msg}");
 

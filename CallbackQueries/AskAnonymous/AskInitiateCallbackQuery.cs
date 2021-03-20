@@ -138,9 +138,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             }
                             catch (ApiRequestException ex)
                             {
-                                Logger.Log.Warn($"&ask_anon_question& Forbidden: bot was blocked by the user - #userId={userId}");
                                 if (ex.ErrorCode == 403)
                                 {
+                                    Logger.Log.Warn($"&ask_anon_question& Forbidden: bot was blocked by the user - #userId={userId}");
+
                                     try
                                     {
                                         var record = db.MyChatMembers

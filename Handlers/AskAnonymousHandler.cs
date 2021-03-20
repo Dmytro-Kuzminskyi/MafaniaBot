@@ -122,12 +122,13 @@ namespace MafaniaBot.Handlers
                             await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Html);
                         }
                         catch (ApiRequestException apiEx)
-                        {
-                            Logger.Log.Warn($"AskAnonymous HANDLER Forbidden: bot was blocked by the user - #userId={recordPendingAnswer.ToUserId}");
-
+                        {                          
                             if (apiEx.ErrorCode == 403)
                             {
+                                Logger.Log.Warn($"AskAnonymous HANDLER Forbidden: bot was blocked by the user - #userId={recordPendingAnswer.ToUserId}");
+
                                 isBotBlocked = true;
+
                                 try
                                 {
                                     var record = db.MyChatMembers
