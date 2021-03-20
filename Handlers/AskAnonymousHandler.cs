@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -22,6 +23,7 @@ namespace MafaniaBot.Handlers
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
         {
+            bool isBotBlocked = false;
             long chatId = message.Chat.Id;
             int userId = message.From.Id;
 
@@ -108,19 +110,56 @@ namespace MafaniaBot.Handlers
                         .FirstOrDefault();
 
                     if (recordPendingAnswer != null)
-                    {
-                        Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg=Ответ успешно отправлен!");
-
-                        await botClient.SendTextMessageAsync(chatId, "Ответ успешно отправлен!");
-
+                    {                     
                         string mention = $"<a href=\"tg://user?id={recordPendingAnswer.FromUserId}\">" + Helper.ConvertTextToHtmlParseMode(recordPendingAnswer.FromUserName) + "</a>";
 
                         msg += "Ответ пользователя " + mention + " на ваш вопрос:" +
                             "\n" + Helper.ConvertTextToHtmlParseMode(message.Text);
+                        try
+                        {
+                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingAnswer.ToUserId} #msg={msg}");
 
-                        Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingAnswer.ToUserId} #msg={msg}");
+                            await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Html);
+                        }
+                        catch (ApiRequestException apiEx)
+                        {
+                            Logger.Log.Warn($"AskAnonymous HANDLER Forbidden: bot was blocked by the user - #userId={recordPendingAnswer.ToUserId}");
 
-                        await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Html);
+                            if (apiEx.ErrorCode == 403)
+                            {
+                                isBotBlocked = true;
+                                try
+                                {
+                                    var record = db.MyChatMembers
+                                        .OrderBy(r => r.UserId)
+                                        .Where(r => r.UserId.Equals(recordPendingAnswer.ToUserId))
+                                        .FirstOrDefault();
+
+                                    if (record != null)
+                                    {
+                                        db.Remove(record);
+                                        await db.SaveChangesAsync();
+                                    }
+                                }
+                                catch (Exception dbEx)
+                                {
+                                    Logger.Log.Error("AskAnonymous HANDLER Error while processing db.MyChatMembers", dbEx);
+                                }
+
+                                msg = "Пользователь заблокировал бота!";
+
+                                Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
+
+                                await botClient.SendTextMessageAsync(chatId, msg);
+                            }
+                        }
+
+                        if (!isBotBlocked)
+                        {
+                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={chatId} #msg=Ответ успешно отправлен!");
+
+                            await botClient.SendTextMessageAsync(chatId, "Ответ успешно отправлен!");
+                        }
 
                         Logger.Log.Debug($"AskAnonymous HANDLER DeleteMessage #chatId={recordPendingAnswer.ChatId} #messageId={msg}");
 

@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -50,10 +51,6 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                         await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
                         return;
-                    }
-                    else
-                    {
-                        //TODO Check If bot is banned
                     }
 
                     var recordPendingAnswer = db.PendingAnonymousAnswers
@@ -132,7 +129,60 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                             Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
-                            await botClient.SendTextMessageAsync(userId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+                            try
+                            {
+                                await botClient.SendTextMessageAsync(userId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+                            }
+                            catch (ApiRequestException ex)
+                            {
+                                Logger.Log.Warn($"&ask_anon_question& Forbidden: bot was blocked by the user - #userId={userId}");
+                                if (ex.ErrorCode == 403)
+                                {
+                                    try
+                                    {
+                                        var record = db.MyChatMembers
+                                            .OrderBy(r => r.UserId)
+                                            .Where(r => r.UserId.Equals(userId))
+                                            .FirstOrDefault();
+
+                                        if (record != null)
+                                        {
+                                            db.Remove(record);
+                                            await db.SaveChangesAsync();
+                                        }
+                                    }
+                                    catch (Exception dbEx)
+                                    {
+                                        Logger.Log.Error("&ask_anon_question& Error while processing db.MyChatMembers", dbEx);
+                                    }
+
+                                    try
+                                    {
+                                        var record = db.AskAnonymousParticipants
+                                            .OrderBy(r => r.UserId)
+                                            .Where(r => r.UserId.Equals(userId))
+                                            .Where(r => r.ChatId.Equals(chatId))
+                                            .FirstOrDefault();
+
+                                        if (record != null)
+                                        {
+                                            db.Remove(record);
+                                            await db.SaveChangesAsync();
+                                        }
+                                    }
+                                    catch (Exception dbEx)
+                                    {
+                                        Logger.Log.Error("&ask_anon_question& Error while processing db.AskAnonymousParticipants", dbEx);
+                                    }
+
+                                    msg = mention + ", сначала зарегистрируйтесь!";
+
+                                    Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={chatId} #msg={msg}");
+
+                                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
+                                    return;
+                                }
+                            }
 
                             try
                             {
