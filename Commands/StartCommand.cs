@@ -11,11 +11,19 @@ namespace MafaniaBot.Commands
 {
     public class StartCommand : Command
     {
-        public override string pattern => @"/start";
+        public override string Pattern { get; }
+
+        public override string Description { get; }
 
         public override bool Contains(Message message)
         {
-            return message.Text.StartsWith(pattern) && !message.From.IsBot;
+            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
+        }
+
+        public StartCommand()
+        {
+            Pattern = @"/start";
+            Description = "";
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)

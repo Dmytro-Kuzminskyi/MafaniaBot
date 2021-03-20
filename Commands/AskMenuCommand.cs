@@ -11,14 +11,22 @@ namespace MafaniaBot.Commands
 {
     public class AskMenuCommand : Command
     {
-        public override string pattern => @"/askmenu";
+        public override string Pattern { get; }
+
+        public override string Description { get; }
+
+        public AskMenuCommand()
+        {
+            Pattern = @"/askmenu";
+            Description = "Анонимные вопросы";
+        }
 
         public override bool Contains(Message message)
         {
             if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
                 return false;
 
-            return message.Text.StartsWith(pattern) && !message.From.IsBot;
+            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)

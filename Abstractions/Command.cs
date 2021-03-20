@@ -4,6 +4,8 @@ namespace MafaniaBot.Abstractions
 {
     public abstract class Command : Entity<Message>
     {
-        public abstract string pattern { get; }
+        public abstract string Pattern { get; }
+
+        public abstract string Description { get; }
     }
 }

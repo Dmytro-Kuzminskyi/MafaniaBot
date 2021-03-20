@@ -25,12 +25,15 @@ namespace MafaniaBot
         }
 
         public void ConfigureServices(IServiceCollection services)
-        {      
-            services    
+        {
+            UpdateService updateService = new UpdateService();
+
+            services
                 .AddDbContext<MafaniaBotDBContext>()
                 .AddScoped<IUpdateEngine, UpdateEngine>()
-                .AddScoped<IUpdateService, UpdateService>()
-                .AddTelegramBotClient(_configuration)
+                .AddSingleton<IUpdateService>(updateService)
+                .ConfigureBotWebhook(_configuration)
+                .ConfigureBotCommands(_configuration, updateService)
                 .AddControllers()
                 .AddNewtonsoftJson(options =>
                     {

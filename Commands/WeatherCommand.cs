@@ -11,18 +11,27 @@ using Newtonsoft.Json.Linq;
 
 namespace MafaniaBot.Commands
 {
-	public class WeatherCommand : Command
-	{
-		public override string pattern => @"/weather";
-		private string city = null;
+    public class WeatherCommand : Command
+    {
+        public override string Pattern { get; }
+
+        public override string Description { get; }
+
+        private string city = null;
 		private string units = "metric";
 		private readonly string weatherAPIUrl = @"http://api.openweathermap.org/data/2.5/weather?q=";
 		private readonly string weatherAPIKey = @"&appid=3427c491991e1ae8f4ec32a65206ccf1";
 		private readonly string weatherUnits = @"&units=";
 
+        public WeatherCommand()
+        {
+            Pattern = @"/weather";
+            Description = "Прогноз погоды";
+        }
+
 		public override bool Contains(Message message)
 		{
-			return message.Text.StartsWith(pattern) && !message.From.IsBot;
+			return message.Text.StartsWith(Pattern) && !message.From.IsBot;
 		}
 
 		public override async Task Execute(Message message, ITelegramBotClient botClient)
