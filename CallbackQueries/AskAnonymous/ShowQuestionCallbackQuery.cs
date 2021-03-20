@@ -52,7 +52,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     }
                     else
                     {
-                        msg = "Этот вопрос не для тебя!";
+                        msg = "Этот вопрос не для вас!";
 
                         Logger.Log.Debug($"show& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
 

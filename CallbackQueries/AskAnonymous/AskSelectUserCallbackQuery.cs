@@ -15,7 +15,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
     {
         public override bool Contains(CallbackQuery callbackQuery)
         {
-            return callbackQuery.Message.Text.Equals("Выбери кому ты хочешь задать анонимный вопрос:");
+            return callbackQuery.Message.Text.Equals("Выберите кому будем задавать анонимный вопрос:");
         }
 
         public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
@@ -115,7 +115,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                             string mention = $"<a href=\"tg://user?id={toUserId}\">" + Helper.ConvertTextToHtmlParseMode(username) + "</a>";
 
-                            msg += "Напиши анонимный вопрос для: " + mention;
+                            msg += "Напишите анонимный вопрос для: " + mention;
                             
                             record.ToUserId = toUserId;
                             record.ToUserName = username;
@@ -178,7 +178,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                                 keyboard.Add(cancelBtn);
 
-                                msg = "Выбери кому ты хочешь задать анонимный вопрос:";
+                                msg = "Выберите кому будем задавать анонимный вопрос:";
 
                                 Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={currentChatId} #messageId={messageId}");
 

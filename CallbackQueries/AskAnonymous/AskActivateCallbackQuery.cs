@@ -42,7 +42,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (recordReg == null)
                     {
-                        msg += mention + ", сначала зарегистрируйся!";
+                        msg += mention + ", сначала зарегистрируйтесь!";
 
                         Logger.Log.Debug("&ask_anon_activate& Record not exists in db.MyChatMembers");
 

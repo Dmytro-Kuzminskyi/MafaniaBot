@@ -42,7 +42,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                         if (recordPendingQuestion != null)
                         {
-                            msg += "Сначала закончи с предыдущим вопросом!";
+                            msg += "Сначала закончите с предыдущим вопросом!";
 
                             Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
 
@@ -82,7 +82,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                             if (question != null)
                             {
-                                msg += "Напиши ответ на анонимный вопрос:" +
+                                msg += "Напишите ответ на анонимный вопрос:" +
                                     "\n" + question;
 
                                 var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "&cancel_answer_anon_question&");
@@ -127,7 +127,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                         }
                         else
                         {
-                            msg += "Сначала ответь на вопрос!";
+                            msg += "Сначала ответьте на вопрос!";
 
                             Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
 
@@ -138,7 +138,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 }
                 else
                 {
-                    msg += "Этот вопрос не для тебя!";
+                    msg += "Этот вопрос не для вас!";
 
                     Logger.Log.Debug($"answer& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
 

@@ -44,7 +44,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (recordReg == null)
                     {
-                        msg += mention + ", сначала зарегистрируйся!";
+                        msg += mention + ", сначала зарегистрируйтесь!";
 
                         Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={chatId} #msg={msg}");
 
@@ -63,7 +63,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (recordPendingAnswer != null)
                     {
-                        msg += "Сначала ответь на вопрос!";
+                        msg += "Сначала ответьте на вопрос!";
 
                         Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
@@ -78,7 +78,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (recordPendingQuestion != null)
                     {
-                        msg += "Сначала закончи с предыдущим вопросом!";
+                        msg += "Сначала закончите с предыдущим вопросом!";
 
                         Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
@@ -95,7 +95,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                     if (userlist.Count == 0)
                     {
-                        msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
+                        msg += "Некому задать анонимный вопрос, подождите пока кто-то подпишется!";
 
                         Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
@@ -128,7 +128,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                             keyboard.Add(cancelBtn);
 
-                            msg += "Выбери кому ты хочешь задать анонимный вопрос:";
+                            msg += "Выберите кому будем задавать анонимный вопрос:";
 
                             Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
@@ -148,7 +148,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                         }
                         else
                         {
-                            msg += "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
+                            msg += "Некому задать анонимный вопрос, подождите пока кто-то подпишется!";
 
                             Logger.Log.Debug($"&ask_anon_question& SendTextMessage #chatId={userId} #msg={msg}");
 
