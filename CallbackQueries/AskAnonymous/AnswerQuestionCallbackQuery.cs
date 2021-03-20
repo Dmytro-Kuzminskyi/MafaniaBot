@@ -80,34 +80,49 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                                 Logger.Log.Error("answer& Error while processing db.AnonymousQuestions", ex);
                             }
 
-                            msg += "Напиши ответ на анонимный вопрос:" +
-                                "\n" + question;
-
-                            var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "&cancel_answer_anon_question&");
-                            var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonCancel } });
-
-                            Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
-
-                            await botClient.SendTextMessageAsync(recipientId, msg, replyMarkup: keyboard);
-
-                            try
+                            if (question != null)
                             {
-                                Logger.Log.Debug($"answer& Add record: (#chatId={chatId} #fromUserId={recipientId} #fromUserName={username} #toUserId={senderId} #messageId={callbackQuery.Message.MessageId}) to db.PendingAnonymousAnswers");
+                                msg += "Напиши ответ на анонимный вопрос:" +
+                                    "\n" + question;
 
-                                db.Add(new PendingAnswer
+                                var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "&cancel_answer_anon_question&");
+                                var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonCancel } });
+
+                                Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
+
+                                await botClient.SendTextMessageAsync(recipientId, msg, replyMarkup: keyboard);
+
+                                try
                                 {
-                                    ChatId = chatId,
-                                    FromUserId = recipientId,
-                                    FromUserName = username,
-                                    ToUserId = senderId,
-                                    MessageId = callbackQuery.Message.MessageId
-                                });
+                                    Logger.Log.Debug($"answer& Add record: (#chatId={chatId} #fromUserId={recipientId} #fromUserName={username} #toUserId={senderId} #messageId={callbackQuery.Message.MessageId}) to db.PendingAnonymousAnswers");
 
-                                await db.SaveChangesAsync();
+                                    db.Add(new PendingAnswer
+                                    {
+                                        ChatId = chatId,
+                                        FromUserId = recipientId,
+                                        FromUserName = username,
+                                        ToUserId = senderId,
+                                        MessageId = callbackQuery.Message.MessageId
+                                    });
+
+                                    await db.SaveChangesAsync();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Logger.Log.Error("answer& Error while processing db.PendingAnonymousAnswers", ex);
+                                }
                             }
-                            catch (Exception ex)
+                            else
                             {
-                                Logger.Log.Error("answer& Error while processing db.PendingAnonymousAnswers", ex);
+                                msg = "Ошибка получения вопроса!";
+
+                                Logger.Log.Debug($"answer& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
+
+                                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
+
+                                Logger.Log.Debug($"answer& DeleteMessage #chatId={callbackQuery.Message.Chat.Id} #messageId={callbackQuery.Message.MessageId}");
+
+                                await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
                             }
                         }
                         else

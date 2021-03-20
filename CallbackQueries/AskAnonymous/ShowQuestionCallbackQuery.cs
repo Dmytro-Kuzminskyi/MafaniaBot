@@ -66,6 +66,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     Logger.Log.Debug($"show& AnswerCallbackQuery #callbackQueryId={callbackQuery.Id} #msg={msg}");
 
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, true);
+
+                    Logger.Log.Debug($"show& DeleteMessage #chatId={callbackQuery.Message.Chat.Id} #messageId={callbackQuery.Message.MessageId}");
+
+                    await botClient.DeleteMessageAsync(callbackQuery.Message.Chat.Id, callbackQuery.Message.MessageId);
                 }
             }
             catch (Exception ex)
