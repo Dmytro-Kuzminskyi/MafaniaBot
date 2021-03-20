@@ -16,7 +16,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 	{
 		public override bool Contains(CallbackQuery callbackQuery)
 		{
-			return callbackQuery.Data.Equals("&ask_anon_question&");
+            if (callbackQuery.Message.Chat.Type == ChatType.Channel || callbackQuery.Message.Chat.Type == ChatType.Private)
+                return false;
+
+            return callbackQuery.Data.Equals("&ask_anon_question&");
 		}
 
 		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)

@@ -1,10 +1,11 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
-using System;
+using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -12,6 +13,9 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
     {
         public override bool Contains(CallbackQuery callbackQuery)
         {
+            if (callbackQuery.Message.Chat.Type == ChatType.Channel || callbackQuery.Message.Chat.Type == ChatType.Private)
+                return false;
+
             return callbackQuery.Message.Text.StartsWith("Новый анонимный вопрос для") && callbackQuery.Data.StartsWith("show&");
         }
 
