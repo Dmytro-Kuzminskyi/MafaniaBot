@@ -42,7 +42,7 @@ namespace MafaniaBot.Handlers
                     {
                         if (!recordPendingQuestion.ToUserId.ToString().Equals("0") && recordPendingQuestion.ToUserName != null)
                         {
-                            string question = message.Text;
+                            string question = message.Text
 
                             try
                             {

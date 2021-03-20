@@ -34,11 +34,11 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     messageId = callbackQuery.Message.MessageId;
                     msg = "Вы отменили анонимный вопрос!";
 
-                    Logger.Log.Debug($"&cancel_ask_select_user& DeleteMessage #chatId={chatId} #messageId={messageId}");
+                    Logger.Log.Debug($"CancelSelectUserCallback DeleteMessage #chatId={chatId} #messageId={messageId}");
 
                     await botClient.DeleteMessageAsync(chatId, messageId);
 
-                    Logger.Log.Debug($"&cancel_ask_select_user& SendTextMessage #chatId={chatId} #msg={msg}");
+                    Logger.Log.Debug($"CancelSelectUserCallback SendTextMessage #chatId={chatId} #msg={msg}");
 
                     await botClient.SendTextMessageAsync(chatId, msg);
 
@@ -73,16 +73,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 }
             }
 
-            chatId = long.Parse(data.Split(':')[0]);
-            int toUserId = int.Parse(data.Split(':')[1]);
-
-            long currentChatId = callbackQuery.Message.Chat.Id;
-            messageId = callbackQuery.Message.MessageId;            
-
-            Logger.Log.Debug($"Initiated SelectUserCallback by #userId={currentChatId} with #data={callbackQuery.Data}");
-
             try
             {
+                Logger.Log.Debug($"Initiated SelectUserCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
+
+                chatId = long.Parse(data.Split(':')[0]);
+                int toUserId = int.Parse(data.Split(':')[1]);
+
+                long currentChatId = callbackQuery.Message.Chat.Id;
+                messageId = callbackQuery.Message.MessageId;            
+
                 using (var db = new MafaniaBotDBContext())
                 {
                     var record = db.PendingAnonymousQuestions
@@ -116,13 +116,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             string mention = $"<a href=\"tg://user?id={toUserId}\">" + Helper.ConvertTextToHtmlParseMode(username) + "</a>";
 
                             msg += "Напиши анонимный вопрос для: " + mention;
-
+                            
                             record.ToUserId = toUserId;
                             record.ToUserName = username;
 
+                            var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "&cancel_ask_anon_question&");
+                            var keyboard = new InlineKeyboardMarkup(new[] {new InlineKeyboardButton[] { buttonCancel } });
+
                             Logger.Log.Debug($"SelectUserCallback EditMessageText #chatId={currentChatId} #msg={msg}");
 
-                            await botClient.EditMessageTextAsync(currentChatId, messageId, msg, ParseMode.Html);
+                            await botClient.EditMessageTextAsync(currentChatId, messageId, msg, ParseMode.Html, replyMarkup: keyboard);
 
                             try
                             {

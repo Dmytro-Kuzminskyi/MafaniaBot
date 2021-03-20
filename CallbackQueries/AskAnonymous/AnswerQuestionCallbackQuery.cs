@@ -5,6 +5,7 @@ using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -82,9 +83,12 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                             msg += "Напиши ответ на анонимный вопрос:" +
                                 "\n" + question;
 
+                            var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "&cancel_answer_anon_question&");
+                            var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonCancel } });
+
                             Logger.Log.Debug($"answer& SendTextMessage #chatId={recipientId} #msg={msg}");
 
-                            await botClient.SendTextMessageAsync(recipientId, msg);
+                            await botClient.SendTextMessageAsync(recipientId, msg, replyMarkup: keyboard);
 
                             try
                             {

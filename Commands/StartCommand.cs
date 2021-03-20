@@ -20,51 +20,58 @@ namespace MafaniaBot.Commands
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
         {
-            long chatId = message.Chat.Id;
-            int userId = message.From.Id;
-            string firstname = message.From.FirstName;
-            string lastname = message.From.LastName;
-
-            string mention = lastname != null ?
-                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
-
-            string msg = "Привет, " + mention + "!" +
-                "\n/help - список доступных команд.";
-
-            if (message.Chat.Type == ChatType.Private)
+            try
             {
-                try
+                long chatId = message.Chat.Id;
+                int userId = message.From.Id;
+                string firstname = message.From.FirstName;
+                string lastname = message.From.LastName;
+
+                string mention = lastname != null ?
+                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+
+                string msg = "Привет, " + mention + "!" +
+                    "\n/help - список доступных команд.";
+
+                if (message.Chat.Type == ChatType.Private)
                 {
-                    using (var db = new MafaniaBotDBContext())
+                    try
                     {
-                        var record = db.MyChatMembers
-                            .OrderBy(r => r.UserId)
-                            .Where(r => r.UserId.Equals(userId))
-                            .FirstOrDefault();
-
-                        if (record == null)
+                        using (var db = new MafaniaBotDBContext())
                         {
-                            Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
+                            var record = db.MyChatMembers
+                                .OrderBy(r => r.UserId)
+                                .Where(r => r.UserId.Equals(userId))
+                                .FirstOrDefault();
 
-                            db.Add(new MyChatMember { UserId = userId });
-                            await db.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
+                            if (record == null)
+                            {
+                                Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
+
+                                db.Add(new MyChatMember { UserId = userId });
+                                await db.SaveChangesAsync();
+                            }
+                            else
+                            {
+                                Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
+                            }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
-                }
+
+                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
             }
-
-            Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-
-            await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
+            catch (Exception ex)
+            {
+                Logger.Log.Error("/START ---", ex);
+            }
         }
     }
 }
