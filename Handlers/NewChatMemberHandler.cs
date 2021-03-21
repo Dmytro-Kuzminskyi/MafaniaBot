@@ -18,43 +18,45 @@ namespace MafaniaBot.Handlers
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
-        {           
-            long chatId = message.Chat.Id;
-            User user = message.NewChatMembers[0];
-
-            Logger.Log.Debug($"NewChatMember HANDLER triggered in #chatId={chatId} #memberId={user.Id}");
-
-            string msg = null;
-
+        {
             try
             {
+                long chatId = message.Chat.Id;
+                User user = message.NewChatMembers[0];
+                string msg = null;
+
+                Logger.Log.Debug($"NewChatMember HANDLER triggered in #chatId={chatId} #memberId={user.Id}");
+
                 if (user.Id.Equals(botClient.BotId))
                 {
-                    msg += "\n/help - список доступных команд.";
+                    msg =
+                        "<b>Общие команды</b>\n" +
+                        "/weather [city] — узнать текущую погоду.\n\n" +
+                        "<b>Команды группового чата</b>\n" +
+                        "/askmenu — меню анонимных вопросов.";
 
                     Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-                    
-                    await botClient.SendTextMessageAsync(chatId, msg);
+
+                    await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+
+                    return;
                 }
-                else
+
+                string firstname = user.FirstName;
+                string lastname = user.LastName;
+                int userId = user.Id;
+
+                if (!user.IsBot)
                 {
-                    string firstname = user.FirstName;
-                    string lastname = user.LastName;
-                    int userId = user.Id;
+                    string mention = lastname != null ?
+                        $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                        $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
 
-                    if (!user.IsBot)
-                    {
-                        string mention = lastname != null ?
-                            $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-                            $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+                    msg = mention + ", добро пожаловать в Ханство!";
 
-                        msg += mention + ", добро пожаловать в Ханство!";
+                    Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
 
-                        Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-                        
-                        await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
-                    }
-
+                    await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
                 }
             }
             catch (Exception ex)
