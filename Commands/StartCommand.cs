@@ -6,6 +6,7 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.Commands
 {
@@ -91,12 +92,16 @@ namespace MafaniaBot.Commands
                             "<b>Общие команды</b>\n" +
                             "/weather [city] — узнать текущую погоду.\n\n" +
                             "<b>Команды группового чата</b>\n" +
-                            "/askmenu — меню анонимных вопросов.";
+                            "/askmenu — меню анонимных вопросов.\n\n";
                     }
+
+                    var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
+
+                    var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
 
                     Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
 
-                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
+                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
                 }
             }
             catch (Exception ex)
