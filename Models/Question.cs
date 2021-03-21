@@ -8,6 +8,9 @@ namespace MafaniaBot.Models
         public int Id { get; set; }
 
         [Required]
+        public long ChatId { get; set; }
+
+        [Required]
         public int FromUserId { get; set; }
 
         [Required]

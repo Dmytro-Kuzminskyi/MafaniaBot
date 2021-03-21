@@ -23,16 +23,16 @@ namespace MafaniaBot.Handlers
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
         {
-            bool isBotBlocked = false;
-            long chatId = message.Chat.Id;
-            int userId = message.From.Id;
-
-            Logger.Log.Debug($"AskAnonymous HANDLER triggered in #chatId={chatId} #userId={userId}");
-
-            string msg = null;
-
             try
             {
+                bool isBotBlocked = false;
+                long chatId = message.Chat.Id;
+                int userId = message.From.Id;
+
+                Logger.Log.Debug($"AskAnonymous HANDLER triggered in #chatId={chatId} #userId={userId}");
+
+                string msg = null;
+
                 using (var db = new MafaniaBotDBContext())
                 {
                     var recordPendingQuestion = db.PendingAnonymousQuestions
@@ -48,10 +48,11 @@ namespace MafaniaBot.Handlers
 
                             try
                             {
-                                Logger.Log.Debug($"AskAnonymous HANDLER Add record: (#fromUserId={recordPendingQuestion.FromUserId}#toUserId={recordPendingQuestion.ToUserId}#text={question}) to db.AnonymousQuestions");
+                                Logger.Log.Debug($"AskAnonymous HANDLER Add record: (#chatId={recordPendingQuestion.ChatId} #fromUserId={recordPendingQuestion.FromUserId}#toUserId={recordPendingQuestion.ToUserId}#text={question}) to db.AnonymousQuestions");
 
                                 db.Add(new Question
                                 {
+                                    ChatId = recordPendingQuestion.ChatId,
                                     FromUserId = recordPendingQuestion.FromUserId,
                                     ToUserId = recordPendingQuestion.ToUserId,
                                     Text = question
@@ -69,11 +70,11 @@ namespace MafaniaBot.Handlers
                                 .Where(r => r.FromUserId.Equals(recordPendingQuestion.FromUserId))
                                 .Where(r => r.ToUserId.Equals(recordPendingQuestion.ToUserId))
                                 .Where(r => r.Text.Equals(question))
-                                .LastOrDefault();                           
+                                .LastOrDefault();
 
                             string mention = $"<a href=\"tg://user?id={recordPendingQuestion.ToUserId}\">" + Helper.ConvertTextToHtmlParseMode(recordPendingQuestion.ToUserName) + "</a>";
 
-                            msg += "Новый анонимный вопрос для " + mention + "!";                        
+                            msg = "Новый анонимный вопрос для " + mention + "!";
 
                             var buttonShow = InlineKeyboardButton.WithCallbackData("Посмотреть",
                                 "show&" + recordQuestion.ToUserId + ":" + recordQuestion.Id);
@@ -86,9 +87,9 @@ namespace MafaniaBot.Handlers
 
                             await botClient.SendTextMessageAsync(chatId, "Вопрос успешно отправлен!");
 
-                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordPendingQuestion.ChatId} #msg={msg}");
+                            Logger.Log.Debug($"AskAnonymous HANDLER SendTextMessage #chatId={recordQuestion.ChatId} #msg={msg}");
 
-                            await botClient.SendTextMessageAsync(recordPendingQuestion.ChatId, msg, ParseMode.Html, replyMarkup: keyboard);
+                            await botClient.SendTextMessageAsync(recordQuestion.ChatId, msg, ParseMode.Html, replyMarkup: keyboard);
 
                             try
                             {
@@ -102,6 +103,7 @@ namespace MafaniaBot.Handlers
                                 Logger.Log.Error("AskAnonymous HANDLER Error while processing db.PendingAnonymousQuestions", ex);
                             }
                         }
+                        return;
                     }
 
                     var recordPendingAnswer = db.PendingAnonymousAnswers
@@ -110,7 +112,7 @@ namespace MafaniaBot.Handlers
                         .FirstOrDefault();
 
                     if (recordPendingAnswer != null)
-                    {                     
+                    {
                         string mention = $"<a href=\"tg://user?id={recordPendingAnswer.FromUserId}\">" + Helper.ConvertTextToHtmlParseMode(recordPendingAnswer.FromUserName) + "</a>";
 
                         msg += "Ответ пользователя " + mention + " на ваш вопрос:" +
@@ -122,7 +124,7 @@ namespace MafaniaBot.Handlers
                             await botClient.SendTextMessageAsync(recordPendingAnswer.ToUserId, msg, ParseMode.Html);
                         }
                         catch (ApiRequestException apiEx)
-                        {                          
+                        {
                             if (apiEx.ErrorCode == 403)
                             {
                                 Logger.Log.Warn($"AskAnonymous HANDLER Forbidden: bot was blocked by the user - #userId={recordPendingAnswer.ToUserId}");

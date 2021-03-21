@@ -20,16 +20,66 @@ namespace MafaniaBot.Handlers
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
-        {            
-            long chatId = message.Chat.Id;
-            User member = message.LeftChatMember;
-
-            Logger.Log.Debug($"LeftChatMember HANDLER triggered in #chatId={chatId} #memberId={member.Id}");
-
-            string msg = null;
-
+        {
             try
             {
+                long chatId = message.Chat.Id;
+                User member = message.LeftChatMember;
+
+                Logger.Log.Debug($"LeftChatMember HANDLER triggered in #chatId={chatId} #memberId={member.Id}");
+
+                string msg = null;
+
+                if (member.Id.Equals(botClient.BotId))
+                {
+                    try
+                    {
+                        using (var db = new MafaniaBotDBContext())
+                        {
+                            var recordsetParticipants = db.AskAnonymousParticipants
+                                    .OrderBy(r => r.ChatId)
+                                    .Where(r => r.ChatId.Equals(chatId));
+
+                            if (recordsetParticipants != null)
+                            {
+                                db.RemoveRange(recordsetParticipants);
+                            }
+
+                            var recordsetPendingQuestions = db.PendingAnonymousQuestions
+                                    .OrderBy(r => r.ChatId)
+                                    .Where(r => r.ChatId.Equals(chatId));
+
+                            if (recordsetPendingQuestions != null)
+                            {
+                                db.RemoveRange(recordsetPendingQuestions);
+                            }
+
+                            var recordsetPendingAnswers = db.PendingAnonymousAnswers
+                                    .OrderBy(r => r.ChatId)
+                                    .Where(r => r.ChatId.Equals(chatId));
+
+                            if (recordsetPendingAnswers != null)
+                            {
+                                db.RemoveRange(recordsetPendingAnswers);
+                            }
+
+                            var recordsetQuestions = db.AnonymousQuestions
+                                    .OrderBy(r => r.ChatId)
+                                    .Where(r => r.ChatId.Equals(chatId));
+
+                            if (recordsetQuestions != null)
+                            {
+                                db.RemoveRange(recordsetQuestions);
+                            }
+
+                            await db.SaveChangesAsync();
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.Error("LeftChatMember HANDLER Error while processing databases", ex);
+                    }
+                }
                 if (!member.IsBot)
                 {
                     int userId = member.Id;
@@ -50,7 +100,7 @@ namespace MafaniaBot.Handlers
                             {
                                 Logger.Log.Debug($"LeftChatMember HANDLER Delete record: (#id={record.Id} #chatId={record.ChatId} #userId={record.UserId}) from db.AskAnonymousParticipants");
 
-                                db.AskAnonymousParticipants.Remove(record);
+                                db.Remove(record);
                                 await db.SaveChangesAsync();
                             }
                         }
@@ -64,7 +114,7 @@ namespace MafaniaBot.Handlers
                                 $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
                                 $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
 
-                    msg += mention + ", покинул Ханство!";
+                    msg = mention + ", покинул Ханство!";
 
                     Logger.Log.Debug($"LeftChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
 

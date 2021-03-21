@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq;
+using Microsoft.EntityFrameworkCore;
 
 namespace MafaniaBot.Models
 {
@@ -25,9 +26,9 @@ namespace MafaniaBot.Models
 			base.OnModelCreating(modelBuilder);
 			modelBuilder.Entity<MyChatMember>();
 			modelBuilder.Entity<Participant>();
-			modelBuilder.Entity<PendingQuestion>();
+            modelBuilder.Entity<PendingQuestion>();
             modelBuilder.Entity<Question>();
             modelBuilder.Entity<PendingAnswer>();
-		}		
+        }		
 	}
 }
