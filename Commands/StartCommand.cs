@@ -15,15 +15,15 @@ namespace MafaniaBot.Commands
 
         public override string Description { get; }
 
-        public override bool Contains(Message message)
-        {
-            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
-        }
-
         public StartCommand()
         {
             Pattern = @"/start";
             Description = "";
+        }
+
+        public override bool Contains(Message message)
+        {
+            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)

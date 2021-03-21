@@ -16,26 +16,27 @@ namespace MafaniaBot.Services
         {
             _commands = new List<Command>
             {
-                new StartCommand(),
-                new WeatherCommand(),
                 new AskMenuCommand(),
+                new WeatherCommand(),
+                new HelpCommand(),
+                new StartCommand(),
             };
             _handlers = new List<Entity<Message>>
-            { 
+            {
+                new AskAnonymousHandler(),
                 new NewChatMemberHandler(),
-                new LeftChatMemberHandler(),
-                new AskAnonymousHandler()
+                new LeftChatMemberHandler()
             };
             _callbackQueries = new List<Entity<CallbackQuery>>
             {
-                new AskActivateCallbackQuery(),
-                new AskDeactivateCallbackQuery(),
                 new AskInitiateCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
+                new CancelQuestionCallbackQuery(),
+                new CancelAnswerCallbackQuery(),
                 new ShowQuestionCallbackQuery(),
                 new AnswerQuestionCallbackQuery(),
-                new CancelQuestionCallbackQuery(),
-                new CancelAnswerCallbackQuery()
+                new AskActivateCallbackQuery(),
+                new AskDeactivateCallbackQuery(),
             };
         }
 
