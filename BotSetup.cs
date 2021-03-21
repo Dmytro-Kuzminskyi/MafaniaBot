@@ -47,7 +47,7 @@ namespace MafaniaBot
 
         public static IServiceCollection ConfigureBotCommands(this IServiceCollection serviceCollection, IConfiguration configuration, IUpdateService updateService)
         {
-            List<Command> commands = updateService.GetCommands();
+            var commands = new List<Command>(updateService.GetCommands());
 
             Command startCommand = commands.Find(c => c.GetType().Name.Equals("StartCommand"));
             commands.Remove(startCommand);
