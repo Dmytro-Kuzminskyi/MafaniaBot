@@ -15,6 +15,7 @@ namespace MafaniaBot
         private readonly IConfiguration _configuration;
         internal static string DATABASE_URL { get; private set; }
         internal static string BOT_URL { get; private set; }
+        internal static string BOT_USERNAME { get; private set; }
 
         public Startup(IConfiguration configuration)
         {
@@ -22,6 +23,7 @@ namespace MafaniaBot
 
             DATABASE_URL = _configuration["Connections:Database"];
             BOT_URL = _configuration["Bot:Url"];
+            BOT_USERNAME = _configuration["Bot:Username"];
         }
 
         public void ConfigureServices(IServiceCollection services)

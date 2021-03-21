@@ -16,12 +16,12 @@ namespace MafaniaBot.Commands
         public HelpCommand()
         {
             Pattern = @"/help";
-            Description = "Помощь";
+            Description = "Помощь по командам";
         }
 
         public override bool Contains(Message message)
         {
-            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
+            return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
@@ -29,20 +29,17 @@ namespace MafaniaBot.Commands
             try
             {
                 long chatId = message.Chat.Id;
+                int messageId = message.MessageId;
 
-                string msg = 
-                    "Анонимные вопросы\n" +
-                    "       /askmenu - меню анонимных вопросов.\n" +
-                    "       Данная команда доступна только в группах.\n" +
-                    "       Для активации анонимных вопросов нужна регистрация (команда /start в личной переписке с ботом).\n" +
-                    "       Каждый участник группы может задать вопрос только тем, кто подписался на анонимные вопросы.\n\n" +
-                    "Прогноз погоды\n" +
-                    "       /weather <Город> - текущая погода.\n\n" +
-                    "По всем вопросам и предложениям писать @beatstick";
+                string msg =
+                    "<b>Общие команды</b>\n" +
+                    "/weather [city] — узнать текущую погоду.\n\n" +
+                    "<b>Команды группового чата</b>\n" +
+                    "/askmenu — меню анонимных вопросов.";
 
                 Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
 
-                await botClient.SendTextMessageAsync(chatId, msg);
+                await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyToMessageId: messageId);
             }
             catch (Exception ex)
             {

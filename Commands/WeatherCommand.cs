@@ -46,7 +46,7 @@ namespace MafaniaBot.Commands
                 {
                     Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg=Incorrect command format #replyToMessageId={messageId}");
 
-                    await botClient.SendTextMessageAsync(chatId, "Введите команду в формате /weather <Город>", replyToMessageId: messageId);
+                    await botClient.SendTextMessageAsync(chatId, "Введите команду в формате /weather [city]", replyToMessageId: messageId);
                 }
                 else
                 {
