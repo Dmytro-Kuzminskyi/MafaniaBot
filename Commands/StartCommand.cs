@@ -15,15 +15,18 @@ namespace MafaniaBot.Commands
 
         public override string Description { get; }
 
+        private string PatternAskAnonRegister { get; }
+
         public StartCommand()
         {
             Pattern = @"/start";
+            PatternAskAnonRegister = @"/start ask_anon_register";
             Description = "";
         }
 
         public override bool Contains(Message message)
         {
-            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
+            return (message.Text.Equals(Pattern) || message.Text.Equals(PatternAskAnonRegister) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
@@ -32,18 +35,25 @@ namespace MafaniaBot.Commands
             {
                 long chatId = message.Chat.Id;
                 int userId = message.From.Id;
+                int messageId = message.MessageId;
                 string firstname = message.From.FirstName;
                 string lastname = message.From.LastName;
+                string msg = null;
 
                 string mention = lastname != null ?
-                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+                    Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname):
+                    Helper.ConvertTextToHtmlParseMode(firstname);
 
-                string msg = "Привет, " + mention + "!" +
-                    "\n/help - список доступных команд.";
-
-                if (message.Chat.Type == ChatType.Private)
+                if (message.Chat.Type != ChatType.Private)
                 {
+                    msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
+
+                    Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, replyToMessageId: messageId);
+                }
+                else
+                {                     
                     try
                     {
                         using (var db = new MafaniaBotDBContext())
@@ -70,11 +80,24 @@ namespace MafaniaBot.Commands
                     {
                         Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
                     }
+
+                    if (message.Text.Equals(PatternAskAnonRegister))
+                    {
+                        msg = "Теперь вы можете подписаться на анонимные вопросы!";
+                    }
+                    else
+                    {
+                        msg = "<b>Привет, " + mention + "!</b>\n\n" +
+                            "<b>Общие команды</b>\n" +
+                            "/weather [city] — узнать текущую погоду.\n\n" +
+                            "<b>Команды группового чата</b>\n" +
+                            "/askmenu — меню анонимных вопросов.";
+                    }
+
+                    Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
                 }
-
-                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-
-                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
             }
             catch (Exception ex)
             {
