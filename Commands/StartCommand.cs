@@ -86,15 +86,20 @@ namespace MafaniaBot.Commands
                 if (message.Text.Equals(PatternAskAnonRegister))
                 {
                     msg = "Теперь вы можете подписаться на анонимные вопросы!";
+
+                    Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg);
+
+                    return;
                 }
-                else
-                {
-                    msg = "<b>Привет, " + mention + "!</b>\n\n" +
-                        "<b>Общие команды</b>\n" +
-                        "/weather [city] — узнать текущую погоду.\n\n" +
-                        "<b>Команды группового чата</b>\n" +
-                        "/askmenu — меню анонимных вопросов.\n\n";
-                }
+
+                msg = "<b>Привет, " + mention + "!</b>\n\n" +
+                    "<b>Общие команды</b>\n" +
+                    "/weather [city] — узнать текущую погоду.\n\n" +
+                    "<b>Команды группового чата</b>\n" +
+                    "/askmenu — меню анонимных вопросов.\n\n";
+
 
                 var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
 
@@ -103,7 +108,6 @@ namespace MafaniaBot.Commands
                 Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
 
                 await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
-
             }
             catch (Exception ex)
             {
