@@ -42,7 +42,7 @@ namespace MafaniaBot.Commands
                 string msg = null;
 
                 string mention = lastname != null ?
-                    Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname):
+                    Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) :
                     Helper.ConvertTextToHtmlParseMode(firstname);
 
                 if (message.Chat.Type != ChatType.Private)
@@ -52,57 +52,58 @@ namespace MafaniaBot.Commands
                     Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
 
                     await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, replyToMessageId: messageId);
+
+                    return;
                 }
-                else
-                {                     
-                    try
+
+                try
+                {
+                    using (var db = new MafaniaBotDBContext())
                     {
-                        using (var db = new MafaniaBotDBContext())
+                        var record = db.MyChatMembers
+                            .OrderBy(r => r.UserId)
+                            .Where(r => r.UserId.Equals(userId))
+                            .FirstOrDefault();
+
+                        if (record == null)
                         {
-                            var record = db.MyChatMembers
-                                .OrderBy(r => r.UserId)
-                                .Where(r => r.UserId.Equals(userId))
-                                .FirstOrDefault();
+                            Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
 
-                            if (record == null)
-                            {
-                                Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
-
-                                db.Add(new MyChatMember { UserId = userId });
-                                await db.SaveChangesAsync();
-                            }
-                            else
-                            {
-                                Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
-                            }
+                            db.Add(new MyChatMember { UserId = userId });
+                            await db.SaveChangesAsync();
+                        }
+                        else
+                        {
+                            Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
-                    }
-
-                    if (message.Text.Equals(PatternAskAnonRegister))
-                    {
-                        msg = "Теперь вы можете подписаться на анонимные вопросы!";
-                    }
-                    else
-                    {
-                        msg = "<b>Привет, " + mention + "!</b>\n\n" +
-                            "<b>Общие команды</b>\n" +
-                            "/weather [city] — узнать текущую погоду.\n\n" +
-                            "<b>Команды группового чата</b>\n" +
-                            "/askmenu — меню анонимных вопросов.\n\n";
-                    }
-
-                    var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
-
-                    var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
-
-                    Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-
-                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
                 }
+                catch (Exception ex)
+                {
+                    Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
+                }
+
+                if (message.Text.Equals(PatternAskAnonRegister))
+                {
+                    msg = "Теперь вы можете подписаться на анонимные вопросы!";
+                }
+                else
+                {
+                    msg = "<b>Привет, " + mention + "!</b>\n\n" +
+                        "<b>Общие команды</b>\n" +
+                        "/weather [city] — узнать текущую погоду.\n\n" +
+                        "<b>Команды группового чата</b>\n" +
+                        "/askmenu — меню анонимных вопросов.\n\n";
+                }
+
+                var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
+
+                var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
+
+                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
+
+                await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
+
             }
             catch (Exception ex)
             {

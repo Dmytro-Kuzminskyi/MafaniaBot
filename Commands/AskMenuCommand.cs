@@ -23,10 +23,7 @@ namespace MafaniaBot.Commands
 
         public override bool Contains(Message message)
         {
-            if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
-                return false;
-
-            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
+            return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
         public override async Task Execute(Message message, ITelegramBotClient botClient)
@@ -36,6 +33,17 @@ namespace MafaniaBot.Commands
                 long chatId = message.Chat.Id;
                 int messageId = message.MessageId;
                 string msg = null;
+
+                if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
+                {
+                    msg = "Эта команда доступна только в групповом чате!";
+
+                    Logger.Log.Debug($"/ASKMENU SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg);
+
+                    return;
+                }
 
                 try
                 {
@@ -55,11 +63,12 @@ namespace MafaniaBot.Commands
                         Logger.Log.Debug($"/ASKMENU SendTextMessage #chatId={chatId} #msg={msg}");
 
                         await botClient.SendTextMessageAsync(chatId, msg);
+
                         return;
                     }
                 }
 
-                var buttonReg = InlineKeyboardButton.WithUrl("Зарегистрироваться", Startup.BOT_URL);
+                var buttonReg = InlineKeyboardButton.WithUrl("Зарегистрироваться", Startup.BOT_URL + "?start=ask_anon_register");
                 var buttonActivate = InlineKeyboardButton.WithCallbackData("Подписаться", "&ask_anon_activate&");
                 var buttonDeactivate = InlineKeyboardButton.WithCallbackData("Отписаться", "&ask_anon_deactivate&");
                 var buttonAskAnon = InlineKeyboardButton.WithCallbackData("Задать анонимный вопрос", "&ask_anon_question&");
