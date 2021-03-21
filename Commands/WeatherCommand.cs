@@ -1,6 +1,7 @@
 ﻿using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using System;
 using System.Net;
 using System.IO;
@@ -41,12 +42,15 @@ namespace MafaniaBot.Commands
                 long chatId = message.Chat.Id;
                 int messageId = message.MessageId;
                 string input = message.Text;
+                string msg = null;
 
                 if (input.Length < 10)
                 {
+                    msg = "Введите команду в формате /weather [city]";
+
                     Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg=Incorrect command format #replyToMessageId={messageId}");
 
-                    await botClient.SendTextMessageAsync(chatId, "Введите команду в формате /weather [city]", replyToMessageId: messageId);
+                    await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
                 }
                 else
                 {
@@ -78,25 +82,45 @@ namespace MafaniaBot.Commands
                         double pressure = float.Parse(obj["main"]["pressure"].ToString()) / 1.333;
                         int humidity = int.Parse(obj["main"]["humidity"].ToString());
 
-                        string msg = "Текущая погода в " + name + ", " + country +
-                            "\nТемпература: " + Math.Round(temp, 1) + " °С" +
-                            "\nПо ощущениям: " + Math.Round(feels_like, 1) + " °С" +
-                            "\nМинимальная: " + Math.Round(temp_min, 1) + " °С" +
-                            "\nМаксимальная: " + Math.Round(temp_max, 1) + " °С" +
-                            "\nДавление: " + Math.Round(pressure) + " мм pт. ст." +
-                            "\nВлажность: " + humidity + " %";
+                        msg = "Текущая погода в " + name + ", " + country + "\n" +
+                            "Температура: " + Math.Round(temp, 1) + " °С\n" +
+                            "По ощущениям: " + Math.Round(feels_like, 1) + " °С\n" +
+                            "Минимальная: " + Math.Round(temp_min, 1) + " °С\n" +
+                            "Максимальная: " + Math.Round(temp_max, 1) + " °С\n" +
+                            "Давление: " + Math.Round(pressure) + " мм pт. ст.\n" +
+                            "Влажность: " + humidity + " %";
 
-                        Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
+                        if (message.Chat.Type == ChatType.Private)
+                        {
+                            Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg}");
 
-                        await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+                            await botClient.SendTextMessageAsync(chatId, msg);
+                        }
+                        else
+                        {
+                            Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
+
+                            await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+                        }
                     }
                     catch (WebException wex)
                     {
                         if (wex.Message.Contains("(404) Not Found"))
                         {
-                            Logger.Log.Warn($"/WEATHER Not found #chatId={chatId} #replyToMessageId={messageId}", wex);
+                            msg = "Город не найден!";
 
-                            await botClient.SendTextMessageAsync(chatId, "Город не найден!", replyToMessageId: messageId);
+                            if (message.Chat.Type == ChatType.Private)
+                            {
+                                Logger.Log.Warn($"/WEATHER #chatId={chatId} #msg=Not found", wex);
+
+                                await botClient.SendTextMessageAsync(chatId, msg);
+                            }
+                            else
+                            {
+                                Logger.Log.Warn($"/WEATHER #chatId={chatId} #msg=Not found #replyToMessageId={messageId}", wex);
+
+                                await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+                            }
                         }
                         else
                         {
