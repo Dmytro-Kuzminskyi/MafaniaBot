@@ -1,7 +1,5 @@
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -18,77 +16,92 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 return false;
 
             return callbackQuery.Data.Equals("&ask_anon_activate&");
-		}
+        }
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer cache)
-		{
-            long chatId = callbackQuery.Message.Chat.Id;
-			int userId = callbackQuery.From.Id;
-
-            Logger.Log.Debug($"Initiated &ask_anon_activate& from #chatId={chatId} by #userId={userId} with #data={callbackQuery.Data}");
-
-            string firstname = callbackQuery.From.FirstName;
-			string lastname = callbackQuery.From.LastName;
-			string msg = null;
-
-            string mention = lastname != null ?
-                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-                $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
-
+        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        {
             try
             {
-                using (var db = new MafaniaBotDBContext())
+                long chatId = callbackQuery.Message.Chat.Id;
+                int userId = callbackQuery.From.Id;
+                bool result = false;
+
+                Logger.Log.Debug($"Initiated &ask_anon_activate& from #chatId={chatId} by #userId={userId} with #data={callbackQuery.Data}");
+
+                string firstname = callbackQuery.From.FirstName;
+                string lastname = callbackQuery.From.LastName;
+                string msg = null;
+
+                string mention = lastname != null ?
+                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+                    $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
+
+                try
                 {
-                    var recordReg = db.MyChatMembers
-                        .OrderBy(r => r.UserId)
-                        .Where(r => r.UserId.Equals(userId))
-                        .FirstOrDefault();
+                    IDatabaseAsync db = redis.GetDatabase();
 
-                    if (recordReg == null)
-                    {
-                        msg += mention + ", сначала зарегистрируйтесь!";
+                    var key = new RedisKey("MyChatMembers");
+                    var value = new RedisValue(userId.ToString());
 
-                        Logger.Log.Debug("&ask_anon_activate& Record not exists in db.MyChatMembers");
-
-                        Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
-
-                        await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
-                        return;
-                    }
-
-                    var record = db.AskAnonymousParticipants
-                            .OrderBy(r => r.ChatId)
-                            .Where(r => r.ChatId.Equals(chatId))
-                            .Where(r => r.UserId.Equals(userId))
-                            .FirstOrDefault();
-
-                    if (record == null)
-                    {
-                        try
-                        {
-                            Logger.Log.Debug($"&ask_anon_activate& Add record: (#chatId={chatId} #userId={userId}) to db.AskAnonymousParticipants");
-
-                            db.Add(new Participant { ChatId = chatId, UserId = userId });
-                            await db.SaveChangesAsync();
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error("&ask_anon_activate& Error while processing db.AskAnonymousParticipants", ex);
-                        }
-
-                        msg += "Пользователь " + mention + " подписался на анонимные вопросы!";
-                    }
-                    else
-                    {
-                        Logger.Log.Debug($"&ask_anon_activate& Record exists: (#id={record.Id} #chatId={chatId} #userId={record.UserId}) in db.AskAnonymousParticipants");
-
-                        msg += "Пользователь " + mention + " уже подписан на анонимные вопросы!";
-                    }
+                    result = await db.SetContainsAsync(key, value);
                 }
+                catch (Exception ex)
+                {
+                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.MyChatMembers", ex);
+                }
+
+                if (!result)
+                {
+                    msg += mention + ", сначала зарегистрируйтесь!";
+
+                    Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
+
+                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
+
+                    return;
+                }
+
+                try
+                {
+                    IDatabaseAsync db = redis.GetDatabase();
+
+                    var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                    var value = new RedisValue(userId.ToString());
+
+                    result = await db.SetContainsAsync(key, value);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                }
+
+                if (!result)
+                {
+                    try
+                    {
+                        IDatabaseAsync db = redis.GetDatabase();
+
+                        var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                        var value = new RedisValue(userId.ToString());
+
+                        await db.SetAddAsync(key, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                    }
+
+                    msg += "Пользователь " + mention + " подписался на анонимные вопросы!";
+                }
+                else
+                {
+                    msg += "Пользователь " + mention + " уже подписан на анонимные вопросы!";
+                }
+
                 Logger.Log.Debug($"&ask_anon_activate& SendTextMessage #chatId={chatId} #msg={msg}");
 
                 await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
-            }
+            }          
             catch(Exception ex)
             {
                 Logger.Log.Error("&ask_anon_activate& ---", ex);

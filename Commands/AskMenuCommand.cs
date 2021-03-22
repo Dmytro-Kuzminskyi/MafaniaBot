@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
-using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
@@ -27,12 +27,13 @@ namespace MafaniaBot.Commands
             return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {
                 long chatId = message.Chat.Id;
                 int messageId = message.MessageId;
+
                 string msg = null;
 
                 if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
@@ -72,12 +73,10 @@ namespace MafaniaBot.Commands
                 var buttonReg = InlineKeyboardButton.WithUrl("Зарегистрироваться", Startup.BOT_URL + "?start=ask_anon_register");
                 var buttonActivate = InlineKeyboardButton.WithCallbackData("Подписаться", "&ask_anon_activate&");
                 var buttonDeactivate = InlineKeyboardButton.WithCallbackData("Отписаться", "&ask_anon_deactivate&");
-                var buttonAskAnon = InlineKeyboardButton.WithCallbackData("Задать анонимный вопрос", "&ask_anon_question&");
 
                 var keyboard = new InlineKeyboardMarkup(new[] {
                     new InlineKeyboardButton[] { buttonReg },
-                    new InlineKeyboardButton[] { buttonActivate, buttonDeactivate },
-                    new InlineKeyboardButton[] { buttonAskAnon }
+                    new InlineKeyboardButton[] { buttonActivate, buttonDeactivate }
                 });
 
                 msg = "Меню анонимных вопросов";

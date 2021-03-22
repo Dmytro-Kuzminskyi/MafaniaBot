@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
-using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
@@ -25,7 +25,7 @@ namespace MafaniaBot.Commands
             return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {

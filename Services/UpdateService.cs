@@ -17,6 +17,7 @@ namespace MafaniaBot.Services
             _commands = new List<Command>
             {
                 new AskMenuCommand(),
+                new AskCommand(),
                 new WeatherCommand(),
                 new HelpCommand(),
                 new StartCommand(),

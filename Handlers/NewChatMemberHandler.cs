@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
-using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Handlers
 {
@@ -18,7 +18,7 @@ namespace MafaniaBot.Handlers
             return (message.NewChatMembers != null) ? true : false;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {
@@ -30,6 +30,20 @@ namespace MafaniaBot.Handlers
 
                 if (user.Id.Equals(botClient.BotId))
                 {
+                    try
+                    {
+                        IDatabaseAsync db = redis.GetDatabase();
+
+                        var key = new RedisKey("MyGroups");
+                        var value = new RedisValue(chatId.ToString());
+
+                        await db.SetAddAsync(key, value);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.Error("NewChatMember HANDLER Error while processing Redis.MyGroups", ex);
+                    }
+
                     msg =
                         "<b>Общие команды</b>\n" +
                         "/weather [city] — узнать текущую погоду.\n\n" +

@@ -3,10 +3,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
-using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Handlers
 {
@@ -20,7 +20,7 @@ namespace MafaniaBot.Handlers
             return (message.LeftChatMember != null) ? true : false;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {
@@ -35,51 +35,56 @@ namespace MafaniaBot.Handlers
                 {
                     try
                     {
-                        using (var db = new MafaniaBotDBContext())
-                        {
-                            var recordsetParticipants = db.AskAnonymousParticipants
-                                    .OrderBy(r => r.ChatId)
-                                    .Where(r => r.ChatId.Equals(chatId));
+                        IDatabaseAsync db = redis.GetDatabase();
 
-                            if (recordsetParticipants != null)
-                            {
-                                db.RemoveRange(recordsetParticipants);
-                            }
+                        var key = new RedisKey("MyGroups");
+                        var value = new RedisValue(chatId.ToString());
 
-                            var recordsetPendingQuestions = db.PendingAnonymousQuestions
-                                    .OrderBy(r => r.ChatId)
-                                    .Where(r => r.ChatId.Equals(chatId));
-
-                            if (recordsetPendingQuestions != null)
-                            {
-                                db.RemoveRange(recordsetPendingQuestions);
-                            }
-
-                            var recordsetPendingAnswers = db.PendingAnonymousAnswers
-                                    .OrderBy(r => r.ChatId)
-                                    .Where(r => r.ChatId.Equals(chatId));
-
-                            if (recordsetPendingAnswers != null)
-                            {
-                                db.RemoveRange(recordsetPendingAnswers);
-                            }
-
-                            var recordsetQuestions = db.AnonymousQuestions
-                                    .OrderBy(r => r.ChatId)
-                                    .Where(r => r.ChatId.Equals(chatId));
-
-                            if (recordsetQuestions != null)
-                            {
-                                db.RemoveRange(recordsetQuestions);
-                            }
-
-                            await db.SaveChangesAsync();
-                        }
+                        await db.SetRemoveAsync(key, value);
                     }
                     catch (Exception ex)
                     {
-                        Logger.Log.Error("LeftChatMember HANDLER Error while processing databases", ex);
+                        Logger.Log.Error("LeftChatMember HANDLER Error while processing Redis.MyGroups", ex);
                     }
+                    /*using (var db = new MafaniaBotDBContext())
+                    {
+                        var recordsetParticipants = db.AskAnonymousParticipants
+                                .OrderBy(r => r.ChatId)
+                                .Where(r => r.ChatId.Equals(chatId));
+
+                        if (recordsetParticipants != null)
+                        {
+                            db.RemoveRange(recordsetParticipants);
+                        }
+
+                        var recordsetPendingQuestions = db.PendingAnonymousQuestions
+                                .OrderBy(r => r.ChatId)
+                                .Where(r => r.ChatId.Equals(chatId));
+
+                        if (recordsetPendingQuestions != null)
+                        {
+                            db.RemoveRange(recordsetPendingQuestions);
+                        }
+
+                        var recordsetPendingAnswers = db.PendingAnonymousAnswers
+                                .OrderBy(r => r.ChatId)
+                                .Where(r => r.ChatId.Equals(chatId));
+
+                        if (recordsetPendingAnswers != null)
+                        {
+                            db.RemoveRange(recordsetPendingAnswers);
+                        }
+
+                        var recordsetQuestions = db.AnonymousQuestions
+                                .OrderBy(r => r.ChatId)
+                                .Where(r => r.ChatId.Equals(chatId));
+
+                        if (recordsetQuestions != null)
+                        {
+                            db.RemoveRange(recordsetQuestions);
+                        }
+
+                        await db.SaveChangesAsync();*/
                 }
                 if (!member.IsBot)
                 {
