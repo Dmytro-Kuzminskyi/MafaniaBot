@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
+using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -19,7 +20,7 @@ namespace MafaniaBot.Handlers
             return (message.LeftChatMember != null) ? true : false;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
         {
             try
             {

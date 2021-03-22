@@ -7,6 +7,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using StackExchange.Redis;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -21,7 +22,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 callbackQuery.Data.StartsWith("answer&");
 		}
 
-		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
+		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer cache)
 		{
 			long chatId = callbackQuery.Message.Chat.Id;
 			string data = callbackQuery.Data.Split('&')[1];

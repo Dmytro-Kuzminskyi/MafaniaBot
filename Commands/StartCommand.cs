@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Linq;
 using System.Threading.Tasks;
-using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
@@ -30,17 +29,17 @@ namespace MafaniaBot.Commands
             return (message.Text.Equals(Pattern) || message.Text.Equals(PatternAskAnonRegister) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
-            {
+            {                       
                 long chatId = message.Chat.Id;
                 int userId = message.From.Id;
                 int messageId = message.MessageId;
                 string firstname = message.From.FirstName;
                 string lastname = message.From.LastName;
                 string msg = null;
-
+                
                 string mention = lastname != null ?
                     Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) :
                     Helper.ConvertTextToHtmlParseMode(firstname);
@@ -58,29 +57,16 @@ namespace MafaniaBot.Commands
 
                 try
                 {
-                    using (var db = new MafaniaBotDBContext())
-                    {
-                        var record = db.MyChatMembers
-                            .OrderBy(r => r.UserId)
-                            .Where(r => r.UserId.Equals(userId))
-                            .FirstOrDefault();
+                    IDatabaseAsync db = redis.GetDatabase();
 
-                        if (record == null)
-                        {
-                            Logger.Log.Debug($"/START Add record: (#userId={userId}) to db.MyChatMembers");
+                    var key = new RedisKey("MyChatMembers");
+                    var value = new RedisValue(userId.ToString());
 
-                            db.Add(new MyChatMember { UserId = userId });
-                            await db.SaveChangesAsync();
-                        }
-                        else
-                        {
-                            Logger.Log.Debug($"/START Record exists: (#id={record.Id} #userId={record.UserId}) in db.MyChatMembers");
-                        }
-                    }
+                    await db.SetAddAsync(key, value);
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.Error("/START Error while processing db.MyChatMembers", ex);
+                    Logger.Log.Error("/START Error while processing Redis.MyChatMembers", ex);
                 }
 
                 if (message.Text.Equals(PatternAskAnonRegister))

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
+using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -17,14 +18,14 @@ namespace MafaniaBot.Handlers
             return (message.NewChatMembers != null) ? true : false;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
         {
             try
             {
                 long chatId = message.Chat.Id;
                 User user = message.NewChatMembers[0];
                 string msg = null;
-
+                
                 Logger.Log.Debug($"NewChatMember HANDLER triggered in #chatId={chatId} #memberId={user.Id}");
 
                 if (user.Id.Equals(botClient.BotId))

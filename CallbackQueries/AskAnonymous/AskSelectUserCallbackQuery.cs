@@ -8,6 +8,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
+using StackExchange.Redis;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -21,7 +22,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
             return callbackQuery.Message.Text.Equals("Выберите кому будем задавать анонимный вопрос:");
         }
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
+        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer cache)
         {
             string data = callbackQuery.Data;
             int messageId = 0;

@@ -7,6 +7,7 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -20,7 +21,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
             return callbackQuery.Data.Equals("&cancel_answer_anon_question&");
         }
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient)
+        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer cache)
         {
             try
             {
