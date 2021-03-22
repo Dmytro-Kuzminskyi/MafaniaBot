@@ -65,14 +65,14 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 {
                     IDatabaseAsync db = redis.GetDatabase();
 
-                    var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                    var key = new RedisKey("AskParticipants:" + chatId.ToString());
                     var value = new RedisValue(userId.ToString());
 
                     result = await db.SetContainsAsync(key, value);
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskParticipants", ex);
                 }
 
                 if (!result)
@@ -81,14 +81,14 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         IDatabaseAsync db = redis.GetDatabase();
 
-                        var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                        var key = new RedisKey("AskParticipants:" + chatId.ToString());
                         var value = new RedisValue(userId.ToString());
 
                         await db.SetAddAsync(key, value);
                     }
                     catch (Exception ex)
                     {
-                        Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                        Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskParticipants", ex);
                     }
 
                     msg += "Пользователь " + mention + " подписался на анонимные вопросы!";

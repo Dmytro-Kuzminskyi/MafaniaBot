@@ -40,7 +40,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 {
                     IDatabaseAsync db = redis.GetDatabase();
 
-                    var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                    var key = new RedisKey("AskParticipants:" + chatId.ToString());
                     var value = new RedisValue(userId.ToString());
 
                     result = await db.SetContainsAsync(key, value);
@@ -48,7 +48,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                    Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskParticipants", ex);
                 }
 
                 if (result)
@@ -57,21 +57,21 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         IDatabaseAsync db = redis.GetDatabase();
 
-                        var key = new RedisKey("AskAnonymousParticipants:" + chatId.ToString());
+                        var key = new RedisKey("AskParticipants:" + chatId.ToString());
                         var value = new RedisValue(userId.ToString());
 
                         result = await db.SetRemoveAsync(key, value);
                     }
                     catch (Exception ex)
                     {
-                        Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskAnonymousParticipants", ex);
+                        Logger.Log.Error("&ask_anon_activate& Error while processing Redis.AskParticipants", ex);
                     }
 
                     msg += "Пользователь " + mention + " отписался от анонимных вопросов!";
                 }
                 else
                 {
-                    Logger.Log.Debug("&ask_anon_deactivate& Record not exists in db.AskAnonymousParticipants");
+                    Logger.Log.Debug("&ask_anon_deactivate& Record not exists in Redis.AskParticipants");
 
                     msg += "Пользователь " + mention + " не подписан на анонимные вопросы!";
                 }

@@ -143,7 +143,7 @@ namespace MafaniaBot.Commands
 
                 foreach(var chat in chats)
                 {
-                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, "ask_select_chat&" + chat.Id.ToString()));
+                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, "ask_select_chat&" + chat.Title + ":" + chat.Id.ToString()));
                 }
 
                 var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();

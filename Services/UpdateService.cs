@@ -30,6 +30,7 @@ namespace MafaniaBot.Services
             };
             _callbackQueries = new List<Entity<CallbackQuery>>
             {
+                new AskSelectChatCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
                 new CancelQuestionCallbackQuery(),
                 new CancelAnswerCallbackQuery(),
