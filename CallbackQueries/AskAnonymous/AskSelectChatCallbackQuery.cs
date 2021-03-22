@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using MafaniaBot.Models;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -37,13 +36,13 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                 string msg = null;
 
-                Logger.Log.Debug($"Initiated SelectUserCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
+                Logger.Log.Debug($"Initiated AskSelectChatCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
 
                 try
                 {
                     IDatabaseAsync db = redis.GetDatabase();
 
-                    var key = new RedisKey("AskParticipants:" + toChatId.ToString());
+                    var key = new RedisKey($"AskParticipants:{toChatId}");
 
                     RedisValue[] recordset = await db.SetMembersAsync(key);
 
@@ -57,7 +56,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.Error($"SelectUserCallback Error while processing Redis.AskParticipants:{toChatId}", ex);
+                    Logger.Log.Error($"AskSelectChatCallback Error while processing Redis.AskParticipants:{toChatId}", ex);
                 }
 
                 userlist.Remove(userId);
@@ -66,7 +65,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 {
                     msg = "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
 
-                    Logger.Log.Debug($"SelectUserCallback DeleteMessage #chatId={chatId} #messageId={messageId}");
+                    Logger.Log.Debug($"AskSelectChatCallback DeleteMessage #chatId={chatId} #messageId={messageId}");
 
                     await botClient.DeleteMessageAsync(chatId, messageId);
 
@@ -89,10 +88,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                     {
                         string firstname = member.User.FirstName;
                         string lastname = member.User.LastName;
-                        int id = member.User.Id;
+                        int toUserId = member.User.Id;
                         string username = lastname != null ? firstname + " " + lastname : firstname;
 
-                        keyboardData.Add(new KeyValuePair<string, string>(username, "ask_select_user&" + id.ToString()));
+                        keyboardData.Add(new KeyValuePair<string, string>(username, $"ask_select_user&{toChatId}:{toUserId}"));
                     }
                 }
 
@@ -104,15 +103,15 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
                 msg = $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>, которому вы желаете задать анонимный вопрос:";
 
-                Logger.Log.Debug($"SelectChatCallback SendTextMessage #chatId={chatId} #msg={msg}");
+                Logger.Log.Debug($"AskSelectChatCallback SendTextMessage #chatId={chatId} #msg={msg}");
 
-                await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyMarkup: new InlineKeyboardMarkup(keyboard));
+                await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html, replyMarkup: new InlineKeyboardMarkup(keyboard));
 
                 try
                 {
-                    IDatabase db = redis.GetDatabase();
+                    IDatabaseAsync db = redis.GetDatabase();
 
-                    var key = new RedisKey("PendingQuestion:" + userId.ToString());
+                    var key = new RedisKey($"PendingQuestion:{userId}");
                     var entry0 = new HashEntry("ChatId", toChatId.ToString());
                     var entry1 = new HashEntry("ChatTitle", toChatTitle);
 
@@ -120,12 +119,12 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.Error($"SelectChatCallback Error while processing Redis.PendingQuestions", ex);
+                    Logger.Log.Error($"AskSelectChatCallback Error while processing Redis.PendingQuestions", ex);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("SelectChatCallback ---", ex);
+                Logger.Log.Error("AskSelectChatCallback ---", ex);
             }
         }
     }
