@@ -32,7 +32,7 @@ namespace MafaniaBot.Services
             {
                 new AskSelectChatCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
-                new CancelQuestionCallbackQuery(),
+                new AskCancelCallbackQuery(),
                 new CancelAnswerCallbackQuery(),
                 new ShowQuestionCallbackQuery(),
                 new AnswerQuestionCallbackQuery(),
