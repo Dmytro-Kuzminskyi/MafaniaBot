@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using MafaniaBot.Abstractions;
@@ -33,109 +34,81 @@ namespace MafaniaBot.Commands
         {
             try
             {
-                List<long> groupList = null;
+                var tokenSource = new CancellationTokenSource();
                 long chatId = message.Chat.Id;
                 int userId = message.From.Id;
                 int messageId = message.MessageId;
-                bool result = false;
                 string msg = null;
 
                 if (message.Chat.Type != ChatType.Private)
                 {
                     msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
-
-                    Logger.Log.Debug($"/ASK SendTextMessage #chatId={chatId} #msg={msg}");
-
-                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, replyToMessageId: messageId);
-
+                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, 
+                        replyToMessageId: messageId);
                     return;
                 }
 
-                try
+                IDatabaseAsync db = redis.GetDatabase();
+                //Check PendingAnswer from userId
+                var pendingAnswerResponse = await db.StringGetAsync(new RedisKey($"PendingAnswer:{userId}"));
+
+                if (!pendingAnswerResponse.IsNullOrEmpty)
                 {
-                    IDatabaseAsync db = redis.GetDatabase();
-
-                    var key = new RedisKey("MyChatMembers");
-                    var value = new RedisValue(userId.ToString());
-
-                    result = await db.SetContainsAsync(key, value);
+                    msg = "Сначала напишите ответ на вопрос!";
+                    await botClient.SendTextMessageAsync(chatId, msg);
+                    return;
                 }
-                catch (Exception ex)
+                //Check PendingQuestion from userId
+                var pendingQuestionResponse = await db.HashExistsAsync(new RedisKey($"PendingQuestion:{userId}"), 
+                        new RedisValue("Status"));
+
+                if (pendingQuestionResponse)
                 {
-                    Logger.Log.Error("/ASK Error while processing Redis.MyChatMembers", ex);
-                }
-
-                if (!result)
-                {
-                    msg = "Cначала зарегистрируйтесь!";
-
-                    Logger.Log.Debug($"/ASK SendTextMessage #chatId={chatId} #msg={msg}");
-
-                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
-
+                    msg = "Сначала закончите с вопросом!";
+                    await botClient.SendTextMessageAsync(chatId, msg);
                     return;
                 }
 
-                //TODO Check Pending Answer
-
-                //TODO Check Pending Question
-
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
-
-                    var key = new RedisKey("MyGroups");
-
-                    RedisValue[] recordset = await db.SetMembersAsync(key);
-
-                    groupList = new List<long>();
-
-                    for (int i = 0; i < recordset.Length; i++)
-                    {
-                        string v = recordset[i].ToString();
-                        groupList.Add(long.Parse(v));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"/ASK Error while processing Redis.MyGroups", ex);
-                }
-
+                var taskInitiate = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
+                        new[] { new HashEntry(new RedisValue("Status"), new RedisValue("Initiated")) });
+                RedisValue[] recordset = await db.SetMembersAsync(new RedisKey("MyGroups"));
+                await taskInitiate;
+                var chatList = new List<string>(recordset.Select(e => e.ToString())).Select(e => long.Parse(e));
+                var tasks = chatList.Select(chatId => 
+                    new { 
+                        ChatId = chatId, 
+                        Member = botClient.GetChatMemberAsync(chatId, userId) 
+                        });
                 var chatsAvailable = new List<long>();
 
-                foreach (var groupId in groupList)
-                {
+                foreach(var task in tasks)
+                {  
                     try
                     {
-                        ChatMember member = await botClient.GetChatMemberAsync(groupId, userId);
-                        if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || member.Status == ChatMemberStatus.Member)
+                        ChatMember member = await task.Member;
+                        if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || 
+                                member.Status == ChatMemberStatus.Member)
                         {
-                            chatsAvailable.Add(groupId);
+                            chatsAvailable.Add(task.ChatId);
                         }
                     }
                     catch (ApiRequestException ex)
                     {
-                        Logger.Log.Warn($"/ASK Not found #userId={userId} in #chatId={groupId}", ex);
+                        Logger.Log.Warn($"/ASK Not found #userId={userId} in #chatId={task.ChatId}", ex);
                     }
                 }
-
-                var tasks = chatsAvailable.Select(chatId => botClient.GetChatAsync(chatId));
-
-                Chat[] chats = await Task.WhenAll(tasks);
+            
+                var tasksChatInfo = chatsAvailable.Select(chatId => botClient.GetChatAsync(chatId));
+                Chat[] chats = await Task.WhenAll(tasksChatInfo);
 
                 if (chats.Length == 0)
                 {
                     msg = "Нет подходящих чатов, где можно задать анонимный вопрос!\n" +
                         "Вы можете добавить бота в группу";
 
-                    var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
-
+                    var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", $"{Startup.BOT_URL}?startgroup=1");
                     var keyboardReg = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
-
-                    Logger.Log.Debug($"/ASK SendTextMessage #chatId={chatId} #msg={msg}");
-
                     await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboardReg);
-
                     return;
                 }
 
@@ -143,24 +116,18 @@ namespace MafaniaBot.Commands
 
                 foreach(var chat in chats)
                 {
-                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, "ask_select_chat&" + chat.Title + ":" + chat.Id.ToString()));
+                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Title}:{chat.Id}"));
                 }
 
+                msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос";
                 var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
-
                 var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
-
                 keyboard.Add(cancelBtn);
-
-                msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос:";
-
-                Logger.Log.Debug($"/ASK SendTextMessage #chatId={chatId} #msg={msg}");
-
                 await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("/START ---", ex);
+                Logger.Log.Error("/ASK ---", ex);
             }
         }
     }
