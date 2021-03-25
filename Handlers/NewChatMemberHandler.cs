@@ -45,14 +45,13 @@ namespace MafaniaBot.Handlers
 					var token = tokenSource.Token;
 					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
 							cancellationToken: token);
-					var tasks = new List<Task> { dbTask, messageTask };
 
 					if (!dbTask.IsCompletedSuccessfully)
 					{
 						tokenSource.Cancel();
 					}
 
-					await Task.WhenAll(tasks);
+					await Task.WhenAll(new List<Task> { dbTask, messageTask });
 					tokenSource.Dispose();
 					return;
 				}

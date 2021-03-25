@@ -69,27 +69,33 @@ namespace MafaniaBot.Commands
                     return;
                 }
 
-                var taskInitiate = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
-                        new[] { new HashEntry(new RedisValue("Status"), new RedisValue("Initiated")) });
+                
                 RedisValue[] recordset = await db.SetMembersAsync(new RedisKey("MyGroups"));
-                await taskInitiate;
-                var chatList = new List<string>(recordset.Select(e => e.ToString())).Select(e => long.Parse(e));
-                var tasks = chatList.Select(chatId => 
-                    new { 
-                        ChatId = chatId, 
-                        Member = botClient.GetChatMemberAsync(chatId, userId) 
-                        });
+                var chatList = new List<long>(recordset.Select(e => long.Parse(e.ToString())));
+                var tasks = chatList.Select(c =>
+                    new {
+                        ChatId = c,
+                        Member = botClient.GetChatMemberAsync(c, userId)
+                    });
                 var chatsAvailable = new List<long>();
 
                 foreach(var task in tasks)
                 {  
                     try
                     {
-                        ChatMember member = await task.Member;
-                        if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || 
+                        long count = await db.SetLengthAsync(new RedisKey($"AskParticipants:{task.ChatId}"));
+                        if (count != 0) {
+                            if (count == 1 && await db.SetContainsAsync(new RedisKey($"AskParticipants:{task.ChatId}"),
+                                new RedisValue(userId.ToString())))
+							{
+                                continue;
+							}
+                            ChatMember member = await task.Member;
+                            if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator ||
                                 member.Status == ChatMemberStatus.Member)
-                        {
-                            chatsAvailable.Add(task.ChatId);
+                            {
+                                chatsAvailable.Add(task.ChatId);
+                            }
                         }
                     }
                     catch (ApiRequestException ex)
@@ -111,19 +117,32 @@ namespace MafaniaBot.Commands
                     await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboardReg);
                     return;
                 }
+                var taskInitiate = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
+                        new[] { new HashEntry(new RedisValue("Status"), new RedisValue("Initiated")) });
 
                 var keyboardData = new List<KeyValuePair<string, string>>();
 
                 foreach(var chat in chats)
                 {
-                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Title}:{chat.Id}"));
+                    keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Id}"));
                 }
 
                 msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос";
                 var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
                 var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
                 keyboard.Add(cancelBtn);
-                await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+                var token = tokenSource.Token;
+                var messageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard),
+                        cancellationToken: token);
+
+                if (!taskInitiate.IsCompletedSuccessfully)
+                {
+                    tokenSource.Cancel();
+                    await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
+                }
+
+                await Task.WhenAll(new List<Task> { taskInitiate, messageTask });
+                tokenSource.Dispose();
             }
             catch (Exception ex)
             {

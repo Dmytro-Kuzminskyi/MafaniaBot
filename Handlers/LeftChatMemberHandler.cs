@@ -30,14 +30,13 @@ namespace MafaniaBot.Handlers
 				string msg = null;
 
 				Logger.Log.Debug($"LeftChatMember HANDLER triggered: #chatId={chatId} left member #userId={member.Id}");
+				IDatabaseAsync db = redis.GetDatabase();
 
 				if (member.Id.Equals(botClient.BotId))
 				{
-					IDatabaseAsync db = redis.GetDatabase();
 					var dbTask0 = db.SetRemoveAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
 					var dbTask1 = db.KeyDeleteAsync(new RedisKey($"AskParticipants:{chatId}"));
-					var tasks = new List<Task> { dbTask0, dbTask1 };
-					await Task.WhenAll(tasks);
+					await Task.WhenAll(new List<Task> { dbTask0, dbTask1 });
 					return;
 				}
 
@@ -48,19 +47,18 @@ namespace MafaniaBot.Handlers
 					string lastname = member.LastName;
 					string mention = Helper.GenerateMention(userId, firstname, lastname);
 					msg = mention + ", покинул(а) чат 😕";
-					IDatabase db = redis.GetDatabase();
 					var dbTask = db.SetRemoveAsync(new RedisKey($"AskParticipants:{chatId}"), new RedisValue(userId.ToString()));
 					var token = tokenSource.Token;
 					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
 							cancellationToken: token);
-					var tasks = new List<Task> { dbTask, messageTask };
 
 					if (!dbTask.IsCompletedSuccessfully)
 					{
 						tokenSource.Cancel();
+						await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
 					}
 
-					await Task.WhenAll(tasks);
+					await Task.WhenAll(new List<Task> { dbTask, messageTask });
 					tokenSource.Dispose();
 				}
 			}
