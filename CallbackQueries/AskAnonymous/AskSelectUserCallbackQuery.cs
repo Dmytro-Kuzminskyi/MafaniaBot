@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -11,234 +13,264 @@ using StackExchange.Redis;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
-    public class AskSelectUserCallbackQuery : Entity<CallbackQuery>
-    {
-        public override bool Contains(CallbackQuery callbackQuery)
-        {
-            if (callbackQuery.Message.Chat.Type != ChatType.Private)
-                return false;
+	public class AskSelectUserCallbackQuery : Entity<CallbackQuery>
+	{
+		public override bool Contains(CallbackQuery callbackQuery)
+		{
+			if (callbackQuery.Message.Chat.Type != ChatType.Private)
+				return false;
 
-            return callbackQuery.Data.StartsWith("ask_select_user&");
-        }
+			return callbackQuery.Data.StartsWith("ask_select_user&");
+		}
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
-        {
-            try
-            {
-                List<int> userlist = null;
-                HashEntry[] record = null;
-                string data = callbackQuery.Data;
-                long chatId = callbackQuery.Message.Chat.Id;
-                int userId = callbackQuery.From.Id;
-                int messageId = callbackQuery.Message.MessageId;
-                string recipientData = data.Split('&')[1];
-                long toChatId = long.Parse(recipientData.Split(':')[0]);
-                int toUserId = int.Parse(recipientData.Split(':')[1]);
-                string chatTitle = null;
-                string msg = null;
+		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		{
+			try
+			{
+				string data = callbackQuery.Data;
+				long chatId = callbackQuery.Message.Chat.Id;
+				int userId = callbackQuery.From.Id;
+				int messageId = callbackQuery.Message.MessageId;
+				string recipientData = data.Split('&')[1];
+				long toChatId = long.Parse(recipientData.Split(':')[0]);
+				int toUserId = int.Parse(recipientData.Split(':')[1]);
+				string msg;
 
-                Logger.Log.Debug($"Initiated AskSelectUserCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
+				Logger.Log.Debug($"Initiated AskSelectUserCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
 
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
+				IDatabaseAsync db = redis.GetDatabase();
+				bool isChatMember = await db.SetContainsAsync(new RedisKey("MyGroups"), new RedisValue(toChatId.ToString()));
 
-                    var key = new RedisKey($"PendingQuestion:{userId}");
+				if (!isChatMember)
+				{
+					HandleBotIsNotChatMember(db, botClient, callbackQuery, chatId, userId, messageId);
+					return;
+				}
 
-                    record = await db.HashGetAllAsync(key);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"AskSelectUserCallback Error while processing Redis.PendingQuestions", ex);
-                }
+				ChatMember member = await GetChatMemberInfo(db, botClient, chatId, toChatId, toUserId);
 
-                if (record == null)
-                {
-                    msg = "Бот удален из чата, невозможно задать вопрос!";
+				if (member != null)
+				{
+					Process(db, botClient, chatId, userId, messageId, member, toChatId, toUserId);
+					return;
+				}
+		
+				msg = "Этот пользователь покинул чат!";
+				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
+				RedisValue[] chatMembers = await db.SetMembersAsync(new RedisKey($"AskParticipants:{toChatId}"));
+				var userList = chatMembers.Select(e => int.Parse(e.ToString())).Where(id => id != userId).ToArray();
 
-                    Logger.Log.Debug($"AskSelectUserCallback DeleteMessage #chatId={chatId} #messageId={messageId}");
+				if (userList.Length == 0)
+				{					
+					Chat[] chats = await GetChatsAvailableInfo(db, botClient, userId);
 
-                    await botClient.DeleteMessageAsync(chatId, messageId);
+					if (chats.Length == 0)
+					{
+						HandleNoChatsAvailable(db, botClient, chatId, userId, messageId);
+						return;
+					}
 
-                    Logger.Log.Debug($"AskSelectUserCallback SendTextMessage #chatId={chatId} #msg={msg}");
+					HandleNoUsersAvailable(botClient, callbackQuery, chatId, messageId, chats);
+					return;
+				}
 
-                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
+				ProcessSelectUser(botClient, chatId, userId, messageId, userList, toChatId, toUserId);
+			}
+			catch (Exception ex)
+			{
+				Logger.Log.Error("AskSelectUserCallback ---", ex);
+			}
+		}
 
-                    return;
-                }
+		private async void Process(IDatabaseAsync db, ITelegramBotClient botClient,
+			long chatId, int userId, int messageId, ChatMember member, long toChatId, int toUserId)
+		{
+			if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || member.Status == ChatMemberStatus.Member)
+			{
+				var tokenSource = new CancellationTokenSource();
+				var token = tokenSource.Token;
+				string firstname = member.User.FirstName;
+				string lastname = member.User.LastName;
+				string mention = Helper.GenerateMention(toUserId, firstname, lastname);
+				var chatInfoTask = botClient.GetChatAsync(toChatId);
+				var dbTask = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
+						new[] { new HashEntry("ToUserId", toUserId) });			
+				var cancelBtn = InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&");
+				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { cancelBtn } });
+				var toChatTitle = (await chatInfoTask).Title;
+				var msg = $"Напишите анонимный вопрос для {mention} из чата " +
+					$"<b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>";
+				var messageTask = botClient.EditMessageTextAsync(chatId, messageId, msg, ParseMode.Html, replyMarkup: keyboard, cancellationToken: token);
 
-                ChatMember member = null;
+				if (!dbTask.IsCompletedSuccessfully)
+				{
+					tokenSource.Cancel();
+					await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
+				}
 
-                try
-                {
-                    member = await botClient.GetChatMemberAsync(toChatId, toUserId);
+				await Task.WhenAll(new List<Task> { dbTask, messageTask });
+				tokenSource.Dispose();
+			}
+		}
 
-                    Logger.Log.Debug($"AskSelectUserCallback #member={toUserId} of #chatId={chatId}");
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"AskSelectUserCallback ChatMember not exists", ex);
-                }
+		private async void ProcessSelectUser(ITelegramBotClient botClient,
+			long chatId, int userId, int messageId, int[] userList, long toChatId, int toUserId)
+		{
+			var chatInfoTask = botClient.GetChatAsync(toChatId);
+			var tasks = userList.Where(id => id != userId).Select(id => botClient.GetChatMemberAsync(toChatId, id));
+			ChatMember[] cMembers = await Task.WhenAll(tasks);
+			var keyboardData = new List<KeyValuePair<string, string>>();
 
-                if (member != null)
-                {
-                    if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || member.Status == ChatMemberStatus.Member)
-                    {
-                        string firstname = member.User.FirstName;
-                        string lastname = member.User.LastName;
+			foreach (var chatMember in cMembers)
+			{
+				if (chatMember.Status == ChatMemberStatus.Creator ||
+					chatMember.Status == ChatMemberStatus.Administrator ||
+					chatMember.Status == ChatMemberStatus.Member)
+				{
+					string firstname = chatMember.User.FirstName;
+					string lastname = chatMember.User.LastName;
+					toUserId = chatMember.User.Id;
+					string username = lastname != null ? firstname + " " + lastname : firstname;
+					keyboardData.Add(new KeyValuePair<string, string>(username, $"ask_select_user&{toChatId}:{toUserId}"));
+				}
+			}			
+			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 2, "CallbackData").InlineKeyboard.ToList();
+			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
+			keyboard.Add(cancelBtn);
+			var toChatTitle = (await chatInfoTask).Title;
+			var msg = $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>, " +
+				$"которому вы желаете задать анонимный вопрос";
+			await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html,
+				replyMarkup: new InlineKeyboardMarkup(keyboard));
+		}
 
-                        string username = lastname != null ? firstname + " " + lastname : firstname;
+		private async void HandleNoChatsAvailable(IDatabaseAsync db, ITelegramBotClient botClient,
+			long chatId, int userId, int messageId)
+		{
+			var tokenSource = new CancellationTokenSource();
+			var token = tokenSource.Token;
+			var dbTask = db.KeyDeleteAsync(new RedisKey($"PendingQuestion:{userId}"));
+			var msg = "Нет подходящих чатов, где можно задать анонимный вопрос!\n" +
+				"Вы можете добавить бота в группу";
+			var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", $"{Startup.BOT_URL}?startgroup=1");
+			var keyboardReg = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
+			var messageTask = botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: keyboardReg, cancellationToken: token);
 
-                        string mention = $"<a href=\"tg://user?id={toUserId}\">" + Helper.ConvertTextToHtmlParseMode(username) + "</a>";
+			if (!dbTask.IsCompletedSuccessfully)
+			{
+				tokenSource.Cancel();
+				await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
+			}
 
-                        try
-                        {
-                            IDatabaseAsync db = redis.GetDatabase();
+			await Task.WhenAll(new List<Task> { dbTask, messageTask });
+			tokenSource.Dispose();
+		}
 
-                            var key = new RedisKey($"PendingQuestion:{userId}");
-                            var field = new RedisValue("ChatTitle");
+		private async void HandleNoUsersAvailable(ITelegramBotClient botClient, CallbackQuery callbackQuery,
+			long chatId, int messageId, Chat[] chats)
+		{
+			var keyboardData = new List<KeyValuePair<string, string>>();
 
-                            chatTitle = await db.HashGetAsync(key, field);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error($"AskSelectUserCallback Error while processing db.PendingQuestion:{userId}", ex);
-                        }
+			foreach (var chat in chats)
+			{
+				keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Id}"));
+			}
 
-                        msg += $"Напишите анонимный вопрос для {mention} из чата <b>{Helper.ConvertTextToHtmlParseMode(chatTitle)}</b>";
+			var msg = "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
+			var answerTask = botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
+			msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос";
+			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
+			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
+			keyboard.Add(cancelBtn);
+			var messageTask = botClient.EditMessageTextAsync(chatId, messageId, msg,
+				replyMarkup: new InlineKeyboardMarkup(keyboard));
+			await Task.WhenAll(new[] { answerTask, messageTask });
+		}
 
-                        var buttonCancel = InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&");
-                        var keyboardCancel = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonCancel } });
+		private async void HandleBotIsNotChatMember(IDatabaseAsync db, ITelegramBotClient botClient, CallbackQuery callbackQuery, long chatId, int userId, int messageId)
+		{
+			Chat[] chats = await GetChatsAvailableInfo(db, botClient, userId);
+			var keyboardData = new List<KeyValuePair<string, string>>();
 
-                        Logger.Log.Debug($"AskSelectUserCallback EditMessageText #chatId={chatId} #msg={msg}");
+			foreach (var chat in chats)
+			{
+				keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Id}"));
+			}
 
-                        await botClient.EditMessageTextAsync(chatId, messageId, msg, ParseMode.Html, replyMarkup: keyboardCancel);
+			var msg = "Бот удален из чата, невозможно задать вопрос!";
+			var answerTask = botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
+			msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос";
+			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
+			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
+			keyboard.Add(cancelBtn);
+			var messageTask = botClient.EditMessageTextAsync(chatId, messageId, msg,
+				replyMarkup: new InlineKeyboardMarkup(keyboard));
+			await Task.WhenAll(new[] { answerTask, messageTask });
+		}
 
-                        try
-                        {
-                            IDatabaseAsync db = redis.GetDatabase();
+		private async Task<Chat[]> GetChatsAvailableInfo(IDatabaseAsync db, ITelegramBotClient botClient, int userId)
+		{
+			RedisValue[] recordset = await db.SetMembersAsync(new RedisKey("MyGroups"));
+			var chatList = new List<long>(recordset.Select(e => long.Parse(e.ToString())));
+			var tasks = chatList.Select(c =>
+				new {
+					ChatId = c,
+					Member = botClient.GetChatMemberAsync(c, userId)
+				});
+			chatList = new List<long>();
 
-                            var key = new RedisKey($"PendingQuestion:{userId}");
-                            var entry = new HashEntry("ToUserId", toUserId);
+			foreach (var task in tasks)
+			{
+				try
+				{
+					long count = await db.SetLengthAsync(new RedisKey($"AskParticipants:{task.ChatId}"));
+					if (count != 0)
+					{
+						if (count == 1 && await db.SetContainsAsync(new RedisKey($"AskParticipants:{task.ChatId}"),
+							new RedisValue(userId.ToString())))
+						{
+							continue;
+						}
+						ChatMember member = await task.Member;
+						if (member.Status == ChatMemberStatus.Creator ||
+							member.Status == ChatMemberStatus.Administrator ||
+							member.Status == ChatMemberStatus.Member)
+						{
+							chatList.Add(task.ChatId);
+						}
+					}
+				}
+				catch (ApiRequestException ex)
+				{
+					Logger.Log.Warn($"/ASK Not found #userId={userId} in #chatId={task.ChatId}", ex);
+				}
+			}
 
-                            await db.HashSetAsync(key, new[] { entry });
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.Error($"AskSelectUserCallback Error while processing db.PendingQuestion:{userId}", ex);
-                        }
-                    }
-                    return;
-                }
+			var tasksChatInfo = chatList.Select(chatId => botClient.GetChatAsync(chatId));
+			Chat[] chats = await Task.WhenAll(tasksChatInfo);
+			return chats;
+		}
 
-                msg = "Этот пользователь покинул чат!";
+		private async Task<ChatMember> GetChatMemberInfo(IDatabaseAsync db, ITelegramBotClient botClient, 
+			long chatId, long toChatId, int toUserId)
+		{
+			var tokenSource = new CancellationTokenSource();
+			var token = tokenSource.Token;
+			var dbTask = db.SetContainsAsync(new RedisKey($"AskParticipants:{chatId}"), new RedisValue(toUserId.ToString()));
+			var memberInfoTask = botClient.GetChatMemberAsync(toChatId, toUserId, cancellationToken: token);
 
-                Logger.Log.Debug($"AskSelectUserCallback AnswerCallbackQuery #chatId={chatId} #msg={msg}");
+			if (!dbTask.IsCompletedSuccessfully)
+			{
+				tokenSource.Cancel();
+				await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
+			}
 
-                await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
+			if (await dbTask)
+			{
+				return await memberInfoTask;
+			}
 
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
-
-                    var key = new RedisKey($"AskParticipants:{toChatId}");
-
-                    RedisValue[] recordset = await db.SetMembersAsync(key);
-
-                    userlist = new List<int>();
-
-                    for (int i = 0; i < recordset.Length; i++)
-                    {
-                        string v = recordset[i].ToString();
-                        userlist.Add(int.Parse(v));
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"AskSelectChatCallback Error while processing Redis.AskParticipants:{toChatId}", ex);
-                }
-
-                userlist.Remove(userId);
-
-                if (userlist.Count == 0)
-                {
-                    msg = "Некому задать анонимный вопрос, подожди пока кто-то подпишется!";
-
-                    Logger.Log.Debug($"AskSelectChatCallback DeleteMessage #chatId={chatId} #messageId={messageId}");
-
-                    await botClient.DeleteMessageAsync(chatId, messageId);
-
-                    await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
-
-                    return;
-                }
-
-                int[] userIds = userlist.ToArray();
-
-                var tasks = userIds.Where(id => id != userId).Select(id => botClient.GetChatMemberAsync(toChatId, id));
-
-                ChatMember[] chatMembers = await Task.WhenAll(tasks);
-
-                var keyboardData = new List<KeyValuePair<string, string>>();
-
-                foreach (var chatMember in chatMembers)
-                {
-                    if (chatMember.Status == ChatMemberStatus.Creator || chatMember.Status == ChatMemberStatus.Administrator || chatMember.Status == ChatMemberStatus.Member)
-                    {
-                        string firstname = chatMember.User.FirstName;
-                        string lastname = chatMember.User.LastName;
-                        toUserId = chatMember.User.Id;
-                        string username = lastname != null ? firstname + " " + lastname : firstname;
-
-                        keyboardData.Add(new KeyValuePair<string, string>(username, $"ask_select_user&{toChatId}:{toUserId}"));
-                    }
-                }
-
-                var keyboard = Helper.CreateInlineKeyboard(keyboardData, 2, "CallbackData").InlineKeyboard.ToList();
-
-                var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
-
-                keyboard.Add(cancelBtn);
-
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
-
-                    var key = new RedisKey($"PendingQuestion:{userId}");
-                    var field = new RedisValue("ChatTitle");
-
-                    chatTitle = await db.HashGetAsync(key, field);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"AskSelectUserCallback Error while processing db.PendingQuestion:{userId}", ex);
-                }
-
-                msg = $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(chatTitle)}</b>, которому вы желаете задать анонимный вопрос:";
-
-                Logger.Log.Debug($"AskSelectChatCallback SendTextMessage #chatId={chatId} #msg={msg}");
-
-                await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html, replyMarkup: new InlineKeyboardMarkup(keyboard));
-
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
-
-                    var key = new RedisKey($"PendingQuestion:{userId}");
-                    var entry0 = new HashEntry("ChatId", toChatId.ToString());
-                    var entry1 = new HashEntry("ChatTitle", chatTitle);
-
-                    await db.HashSetAsync(key, new[] { entry0, entry1 });
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"AskSelectChatCallback Error while processing Redis.PendingQuestions", ex);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("AskSelectUserCallback ---", ex);
-            }
-        }
-    }
+			return null;
+		}
+	}
 }
