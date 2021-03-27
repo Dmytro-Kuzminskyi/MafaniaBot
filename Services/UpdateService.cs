@@ -17,6 +17,7 @@ namespace MafaniaBot.Services
             _commands = new List<Command>
             {
                 new AskMenuCommand(),
+                new AskCommand(),
                 new WeatherCommand(),
                 new HelpCommand(),
                 new StartCommand(),
@@ -29,11 +30,10 @@ namespace MafaniaBot.Services
             };
             _callbackQueries = new List<Entity<CallbackQuery>>
             {
-                new AskInitiateCallbackQuery(),
+                new AskSelectChatCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
-                new CancelQuestionCallbackQuery(),
-                new CancelAnswerCallbackQuery(),
-                new ShowQuestionCallbackQuery(),
+                new AskCancelCallbackQuery(),
+                new AnswerCancelCallbackQuery(),
                 new AnswerQuestionCallbackQuery(),
                 new AskActivateCallbackQuery(),
                 new AskDeactivateCallbackQuery(),

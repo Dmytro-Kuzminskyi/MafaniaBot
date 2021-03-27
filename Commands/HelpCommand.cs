@@ -4,6 +4,7 @@ using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
@@ -24,7 +25,7 @@ namespace MafaniaBot.Commands
             return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {
@@ -33,12 +34,12 @@ namespace MafaniaBot.Commands
 
                 string msg =
                     "<b>Общие команды</b>\n" +
-                    "/weather [city] — узнать текущую погоду.\n\n" +
+                    "/weather [city] — узнать текущую погоду\n" +
+                    "/help — справка по командам\n\n" +
+                    "<b>Команды личного чата</b>\n" +
+                    "/ask — задать анонимный вопрос\n\n" +
                     "<b>Команды группового чата</b>\n" +
-                    "/askmenu — меню анонимных вопросов.";
-
-                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-
+                    "/askmenu — меню анонимных вопросов\n\n";
                 await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyToMessageId: messageId);
             }
             catch (Exception ex)

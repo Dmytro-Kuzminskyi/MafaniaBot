@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
@@ -35,7 +36,7 @@ namespace MafaniaBot.Commands
 			return message.Text.StartsWith(Pattern) && !message.From.IsBot;
 		}
 
-		public override async Task Execute(Message message, ITelegramBotClient botClient)
+		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
 		{
             try
             {

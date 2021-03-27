@@ -1,68 +1,76 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Handlers
 {
-    public class NewChatMemberHandler : Entity<Message>
-    {
-        public override bool Contains(Message message)
-        {
-            if (message.Chat.Type == ChatType.Private || message.Chat.Type == ChatType.Channel)
-                return false;
+	public class NewChatMemberHandler : Entity<Message>
+	{
+		public override bool Contains(Message message)
+		{
+			if (message.Chat.Type == ChatType.Private || message.Chat.Type == ChatType.Channel)
+				return false;
 
-            return (message.NewChatMembers != null) ? true : false;
-        }
+			return (message.NewChatMembers != null) ? true : false;
+		}
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient)
-        {
-            try
-            {
-                long chatId = message.Chat.Id;
-                User user = message.NewChatMembers[0];
-                string msg = null;
+		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		{
+			try
+			{
+				var tokenSource = new CancellationTokenSource();
+				var token = tokenSource.Token;
+				long chatId = message.Chat.Id;
+				User user = message.NewChatMembers[0];
+				string msg;
 
-                Logger.Log.Debug($"NewChatMember HANDLER triggered in #chatId={chatId} #memberId={user.Id}");
+				Logger.Log.Debug($"NewChatMember HANDLER triggered: #chatId={chatId} new member #userId={user.Id}");
 
-                if (user.Id.Equals(botClient.BotId))
-                {
-                    msg =
-                        "<b>Общие команды</b>\n" +
-                        "/weather [city] — узнать текущую погоду.\n\n" +
-                        "<b>Команды группового чата</b>\n" +
-                        "/askmenu — меню анонимных вопросов.";
+				if (user.Id.Equals(botClient.BotId))
+				{
+					msg =
+						"<b>Общие команды</b>\n" +
+						"/weather [city] — узнать текущую погоду.\n" +
+						"/ask — задать анонимный вопрос.\n\n" +
+						"<b>Команды группового чата</b>\n" +
+						"/askmenu — меню анонимных вопросов.";
 
-                    Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
+					IDatabaseAsync db = redis.GetDatabase();
+					var dbTask = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));				
+					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
+							cancellationToken: token);
 
-                    await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+					if (!dbTask.IsCompletedSuccessfully)
+					{
+						tokenSource.Cancel();
+					}
 
-                    return;
-                }
+					await Task.WhenAll(new List<Task> { dbTask, messageTask });
+					tokenSource.Dispose();
+					return;
+				}
 
-                string firstname = user.FirstName;
-                string lastname = user.LastName;
-                int userId = user.Id;
+				string firstname = user.FirstName;
+				string lastname = user.LastName;
+				int userId = user.Id;
 
-                if (!user.IsBot)
-                {
-                    string mention = lastname != null ?
-                        $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-                        $"<a href=\"tg://user?id={userId}\">" + Helper.ConvertTextToHtmlParseMode(firstname) + "</a>";
-
-                    msg = mention + ", добро пожаловать в Ханство!";
-
-                    Logger.Log.Debug($"NewChatMember HANDLER SendTextMessage #chatId={chatId} #msg={msg}");
-
-                    await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("NewChatMember HANDLER ---", ex);
-            }
-        }
-    }
+				if (!user.IsBot)
+				{
+					string mention = Helper.GenerateMention(userId, firstname, lastname);
+					msg = mention + ", добро пожаловать 😊";
+					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+				}
+			}
+			catch (Exception ex)
+			{
+				Logger.Log.Error("NewChatMember HANDLER ---", ex);
+			}
+		}
+	}
 }

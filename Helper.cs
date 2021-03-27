@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Reflection;
 using System.Collections.Generic;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot
@@ -16,7 +17,7 @@ namespace MafaniaBot
 			var keyboardInline = new InlineKeyboardButton[rows][];
 
 			while (i < keyboardData.Count)
-			{				
+			{
 				var keyboardButtons = new InlineKeyboardButton[rowSize];
 
 				for (int j = 0; j < rowSize; j++)
@@ -41,23 +42,37 @@ namespace MafaniaBot
 					};
 					PropertyInfo pi = keyboardButtons[j].GetType().GetProperty(property);
 					pi.SetValue(keyboardButtons[j], keyboardData[i].Value);
-					i++; 
+					i++;
 				}
 				keyboardInline[k++] = keyboardButtons;
-			}	
+			}
 			return new InlineKeyboardMarkup(keyboardInline);
 		}
 
-        public static string ConvertTextToHtmlParseMode(string text)
-        {
-            if (text != null)
-            {
-                text = text.Replace("<", "");
-                text = text.Replace(">", "");
-                text = text.Replace("&", "");
-                return text;
-            }
-            return null;
-        }
+		public static string GenerateMention(int userId, string firstname, string lastname, ParseMode parseMode = ParseMode.Html)
+		{
+			string mention = null;
+
+			if (parseMode == ParseMode.Html)
+			{
+				mention = lastname != null ?
+						$"<a href=\"tg://user?id={userId}\">" + ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
+						$"<a href=\"tg://user?id={userId}\">" + ConvertTextToHtmlParseMode(firstname) + "</a>";
+			}
+
+			return mention;
+		}
+
+		public static string ConvertTextToHtmlParseMode(string text)
+		{
+			if (text != null)
+			{
+				text = text.Replace("<", "");
+				text = text.Replace(">", "");
+				text = text.Replace("&", "");
+				return text;
+			}
+			return null;
+		}
 	}
 }

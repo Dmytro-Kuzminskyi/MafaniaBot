@@ -2,17 +2,20 @@
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using MafaniaBot.Abstractions;
+using StackExchange.Redis;
 
 namespace MafaniaBot.Engines
 {
 	public class UpdateEngine : IUpdateEngine
 	{
-		private readonly ITelegramBotClient _telegramBotClient;
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
+        private readonly ITelegramBotClient _telegramBotClient;
 		private readonly IUpdateService _updateService;
 
-		public UpdateEngine(IUpdateService updateService, ITelegramBotClient telegramBotClient)
+		public UpdateEngine(IConnectionMultiplexer connectionMultiplexer, IUpdateService updateService, ITelegramBotClient telegramBotClient)
 		{
-			_telegramBotClient = telegramBotClient;
+            _connectionMultiplexer = connectionMultiplexer;
+            _telegramBotClient = telegramBotClient;
 			_updateService = updateService;
 		}
 
@@ -24,7 +27,7 @@ namespace MafaniaBot.Engines
 			{
 				if (command.Contains(message))
 				{
-					await command.Execute(message, _telegramBotClient);
+					await command.Execute(message, _telegramBotClient, _connectionMultiplexer);
 					break;
 				}
 			}
@@ -38,7 +41,7 @@ namespace MafaniaBot.Engines
 			{
 				if (handler.Contains(message))
 				{
-					await handler.Execute(message, _telegramBotClient);
+					await handler.Execute(message, _telegramBotClient, _connectionMultiplexer);
 					break;
 				}
 			}
@@ -52,7 +55,7 @@ namespace MafaniaBot.Engines
 			{
 				if (cb.Contains(callbackQuery))
 				{
-					await cb.Execute(callbackQuery, _telegramBotClient);
+					await cb.Execute(callbackQuery, _telegramBotClient, _connectionMultiplexer);
 					break;
 				}
 			}
