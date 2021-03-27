@@ -33,7 +33,7 @@ namespace MafaniaBot.Commands
         public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
-            {                
+            {   
                 if (message.Chat.Type != ChatType.Private)
                 {
                     string msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";

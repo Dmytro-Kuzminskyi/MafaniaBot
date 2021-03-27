@@ -25,7 +25,6 @@ namespace MafaniaBot
             _configuration = configuration;
 
             REDIS_CONNECTION = _configuration["Connections:Redis"];
-            DATABASE_URL = _configuration["Connections:Database"];
             BOT_URL = _configuration["Bot:Url"];
             BOT_USERNAME = _configuration["Bot:Username"];
         }
@@ -36,7 +35,6 @@ namespace MafaniaBot
 
             services
                 .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))
-                .AddDbContext<MafaniaBotDBContext>()
                 .AddScoped<IUpdateEngine, UpdateEngine>()
                 .AddSingleton<IUpdateService>(updateService)
                 .ConfigureBotWebhook(_configuration)

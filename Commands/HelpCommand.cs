@@ -34,12 +34,12 @@ namespace MafaniaBot.Commands
 
                 string msg =
                     "<b>Общие команды</b>\n" +
-                    "/weather [city] — узнать текущую погоду.\n\n" +
+                    "/weather [city] — узнать текущую погоду\n" +
+                    "/help — справка по командам\n\n" +
+                    "<b>Команды личного чата</b>\n" +
+                    "/ask — задать анонимный вопрос\n\n" +
                     "<b>Команды группового чата</b>\n" +
-                    "/askmenu — меню анонимных вопросов.";
-
-                Logger.Log.Debug($"/START SendTextMessage #chatId={chatId} #msg={msg}");
-
+                    "/askmenu — меню анонимных вопросов\n\n";
                 await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyToMessageId: messageId);
             }
             catch (Exception ex)
