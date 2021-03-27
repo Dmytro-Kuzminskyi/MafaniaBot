@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
-using MafaniaBot.Models;
+using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -21,7 +20,8 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
             return callbackQuery.Data.Equals("answer_cancel&");
         }
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(CallbackQuery callbackQuery, 
+            ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {
@@ -30,13 +30,22 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
                 long chatId = callbackQuery.Message.Chat.Id;
                 int userId = callbackQuery.From.Id;
                 int messageId = callbackQuery.Message.MessageId;
-
-                IDatabaseAsync db = redis.GetDatabase();
-                var key = new RedisKey($"PendingAnswer:{userId}");
-                await db.KeyDeleteAsync(key);
+                var tokenSource = new CancellationTokenSource();
+                var token = tokenSource.Token;
                 string msg = "Вы отменили ответ на анонимный вопрос!";
-                Logger.Log.Debug($"answer_cancel& SendTextMessage #chatId={chatId} #msg={msg}");
-                await botClient.SendTextMessageAsync(chatId, msg);
+                IDatabaseAsync db = redis.GetDatabase();
+                var dbTask = db.KeyDeleteAsync(new RedisKey($"PendingAnswer:{userId}"));
+                var deleteTask = botClient.DeleteMessageAsync(chatId, messageId, cancellationToken: token);
+                var messageTask = botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, cancellationToken: token);
+
+                if (!dbTask.IsCompletedSuccessfully)
+                {
+                    tokenSource.Cancel();
+                    await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
+                }
+
+                await Task.WhenAll(new List<Task> { dbTask, deleteTask, messageTask });
+                tokenSource.Dispose();
             }
             catch (Exception ex)
             {

@@ -64,14 +64,16 @@ namespace MafaniaBot.Commands
             long chatId = message.Chat.Id;
             int userId = message.From.Id;
             bool state = false;
-            RedisValue value = await db.StringGetAsync(new RedisKey($"PendingAnswer:{userId}"));
+            bool value = await db.HashExistsAsync(new RedisKey($"PendingAnswer:{userId}"),
+                        new RedisValue("Status"));
 
-            if (!value.IsNullOrEmpty)
+            if (value)
             {
                 string msg = "Сначала напишите ответ на вопрос!";
                 await botClient.SendTextMessageAsync(chatId, msg);
                 state = true;
             }
+
             return state;
         }
 
@@ -89,6 +91,7 @@ namespace MafaniaBot.Commands
                 await botClient.SendTextMessageAsync(chatId, msg);
                 state = true;
             }
+
             return state;
         }
 

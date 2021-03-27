@@ -23,7 +23,8 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
             return callbackQuery.Data.StartsWith("ask_select_chat&");
         }
 
-        public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(CallbackQuery callbackQuery, 
+            ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
             {               
