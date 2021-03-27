@@ -34,28 +34,24 @@ namespace MafaniaBot.Commands
         {
             try
             {                
-                long chatId = message.Chat.Id;
-                int userId = message.From.Id;
-                int messageId = message.MessageId;
-
                 if (message.Chat.Type != ChatType.Private)
                 {
                     string msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
-                    await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, 
-                        replyToMessageId: messageId);
+                    await botClient.SendTextMessageAsync(message.Chat.Id, msg, ParseMode.Html, disableWebPagePreview: true, 
+                        replyToMessageId: message.MessageId);
                     return;
                 }
 
                 IDatabaseAsync db = redis.GetDatabase();
-                var chatAvailableTask = GetChatsAvailableInfo(db, botClient, userId);
-                if (await HandlePendingAnswer(db, botClient, chatId, userId))
+                var chatAvailableTask = GetChatsAvailableInfo(message, db, botClient);
+                if (await HandlePendingAnswer(message, db, botClient))
                     return;
-                if (await HandlePendingQuestion(db, botClient, chatId, userId))
+                if (await HandlePendingQuestion(message, db, botClient))
                     return;
 
                 Chat[] chats = await chatAvailableTask;
 
-                Process(db, botClient, chats, chatId, userId);
+                Process(message, db, botClient, chats);
             }
             catch (Exception ex)
             {
@@ -63,8 +59,10 @@ namespace MafaniaBot.Commands
             }
         }
 
-        private async Task<bool> HandlePendingAnswer(IDatabaseAsync db, ITelegramBotClient botClient, long chatId, int userId)
+        private async Task<bool> HandlePendingAnswer(Message message, IDatabaseAsync db, ITelegramBotClient botClient)
 		{
+            long chatId = message.Chat.Id;
+            int userId = message.From.Id;
             bool state = false;
             RedisValue value = await db.StringGetAsync(new RedisKey($"PendingAnswer:{userId}"));
 
@@ -77,8 +75,10 @@ namespace MafaniaBot.Commands
             return state;
         }
 
-        private async Task<bool> HandlePendingQuestion(IDatabaseAsync db, ITelegramBotClient botClient, long chatId, int userId)
+        private async Task<bool> HandlePendingQuestion(Message message, IDatabaseAsync db, ITelegramBotClient botClient)
 		{
+            long chatId = message.Chat.Id;
+            int userId = message.From.Id;
             bool state = false;
             bool value = await db.HashExistsAsync(new RedisKey($"PendingQuestion:{userId}"),
                         new RedisValue("Status"));
@@ -92,8 +92,9 @@ namespace MafaniaBot.Commands
             return state;
         }
 
-        private async Task<Chat[]> GetChatsAvailableInfo(IDatabaseAsync db, ITelegramBotClient botClient, int userId)
+        private async Task<Chat[]> GetChatsAvailableInfo(Message message, IDatabaseAsync db, ITelegramBotClient botClient)
 		{
+            int userId = message.From.Id;
             RedisValue[] recordset = await db.SetMembersAsync(new RedisKey("MyGroups"));
             var chatList = new List<long>(recordset.Select(e => long.Parse(e.ToString())));
             var tasks = chatList.Select(c =>
@@ -135,8 +136,10 @@ namespace MafaniaBot.Commands
             return chats;
         }
 
-        private async void Process(IDatabaseAsync db, ITelegramBotClient botClient, Chat[] chats, long chatId, int userId)
+        private async void Process(Message message, IDatabaseAsync db, ITelegramBotClient botClient, Chat[] chats)
 		{
+            long chatId = message.Chat.Id;
+            int userId = message.From.Id;
             var tokenSource = new CancellationTokenSource();
             var token = tokenSource.Token;
             string msg;

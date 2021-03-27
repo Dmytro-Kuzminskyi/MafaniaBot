@@ -27,11 +27,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 		{
 			try
 			{
-				string data = callbackQuery.Data;
-				long chatId = callbackQuery.Message.Chat.Id;
-				int userId = callbackQuery.From.Id;
-				int messageId = callbackQuery.Message.MessageId;
-				string recipientData = data.Split('&')[1];
+				string recipientData = callbackQuery.Data.Split('&')[1];
 				long toChatId = long.Parse(recipientData.Split(':')[0]);
 				int toUserId = int.Parse(recipientData.Split(':')[1]);
 				string msg;
@@ -39,42 +35,43 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				Logger.Log.Debug($"Initiated AskSelectUserCallback by #userId={callbackQuery.Message.Chat.Id} with #data={callbackQuery.Data}");
 
 				IDatabaseAsync db = redis.GetDatabase();
-				bool isChatMember = await db.SetContainsAsync(new RedisKey("MyGroups"), new RedisValue(toChatId.ToString()));
+				bool isBotChatMember = await db.SetContainsAsync(new RedisKey("MyGroups"), new RedisValue(toChatId.ToString()));
 
-				if (!isChatMember)
+				if (!isBotChatMember)
 				{
-					HandleBotIsNotChatMember(db, botClient, callbackQuery, chatId, userId, messageId);
+					HandleBotIsNotChatMember(callbackQuery, db, botClient);
 					return;
 				}
 
-				ChatMember member = await GetChatMemberInfo(db, botClient, chatId, toChatId, toUserId);
+				ChatMember member = await GetChatMemberInfo(callbackQuery, db, botClient, toChatId, toUserId);
 
 				if (member != null)
 				{
-					Process(db, botClient, chatId, userId, messageId, member, toChatId, toUserId);
+					Process(callbackQuery, db, botClient, member, toChatId, toUserId);
 					return;
 				}
 		
 				msg = "Этот пользователь покинул чат!";
 				await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg);
 				RedisValue[] chatMembers = await db.SetMembersAsync(new RedisKey($"AskParticipants:{toChatId}"));
-				var userList = chatMembers.Select(e => int.Parse(e.ToString())).Where(id => id != userId).ToArray();
+				var userList = chatMembers.Select(e => int.Parse(e.ToString()))
+										.Where(id => id != callbackQuery.From.Id).ToArray();
 
 				if (userList.Length == 0)
 				{					
-					Chat[] chats = await GetChatsAvailableInfo(db, botClient, userId);
+					Chat[] chats = await GetChatsAvailableInfo(callbackQuery, db, botClient);
 
 					if (chats.Length == 0)
 					{
-						HandleNoChatsAvailable(db, botClient, chatId, userId, messageId);
+						HandleNoChatsAvailable(callbackQuery, db, botClient);
 						return;
 					}
 
-					HandleNoUsersAvailable(botClient, callbackQuery, chatId, messageId, chats);
+					HandleNoUsersAvailable(callbackQuery, botClient, chats);
 					return;
 				}
 
-				ProcessSelectUser(botClient, chatId, userId, messageId, userList, toChatId, toUserId);
+				ProcessSelectUser(callbackQuery, botClient, userList, toChatId, toUserId);
 			}
 			catch (Exception ex)
 			{
@@ -82,10 +79,16 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			}
 		}
 
-		private async void Process(IDatabaseAsync db, ITelegramBotClient botClient,
-			long chatId, int userId, int messageId, ChatMember member, long toChatId, int toUserId)
+		private async void Process(CallbackQuery callbackQuery, IDatabaseAsync db, ITelegramBotClient botClient,
+			ChatMember member, long toChatId, int toUserId)
 		{
-			if (member.Status == ChatMemberStatus.Creator || member.Status == ChatMemberStatus.Administrator || member.Status == ChatMemberStatus.Member)
+			long chatId = callbackQuery.Message.Chat.Id;
+			int userId = callbackQuery.From.Id;
+			int messageId = callbackQuery.Message.MessageId;
+
+			if (member.Status == ChatMemberStatus.Creator || 
+				member.Status == ChatMemberStatus.Administrator || 
+				member.Status == ChatMemberStatus.Member)
 			{
 				var tokenSource = new CancellationTokenSource();
 				var token = tokenSource.Token;
@@ -94,7 +97,9 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				string mention = Helper.GenerateMention(toUserId, firstname, lastname);
 				var chatInfoTask = botClient.GetChatAsync(toChatId);
 				var dbTask = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
-						new[] { new HashEntry("ToUserId", toUserId) });			
+						new[] { new HashEntry("ToUserId", toUserId), 
+								new HashEntry("MessageId", messageId.ToString()) 
+						});			
 				var cancelBtn = InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&");
 				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { cancelBtn } });
 				var toChatTitle = (await chatInfoTask).Title;
@@ -113,9 +118,12 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			}
 		}
 
-		private async void ProcessSelectUser(ITelegramBotClient botClient,
-			long chatId, int userId, int messageId, int[] userList, long toChatId, int toUserId)
+		private async void ProcessSelectUser(CallbackQuery callbackQuery, ITelegramBotClient botClient,
+			int[] userList, long toChatId, int toUserId)
 		{
+			long chatId = callbackQuery.Message.Chat.Id;
+			int userId = callbackQuery.From.Id;
+			int messageId = callbackQuery.Message.MessageId;
 			var chatInfoTask = botClient.GetChatAsync(toChatId);
 			var tasks = userList.Where(id => id != userId).Select(id => botClient.GetChatMemberAsync(toChatId, id));
 			ChatMember[] cMembers = await Task.WhenAll(tasks);
@@ -144,9 +152,11 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				replyMarkup: new InlineKeyboardMarkup(keyboard));
 		}
 
-		private async void HandleNoChatsAvailable(IDatabaseAsync db, ITelegramBotClient botClient,
-			long chatId, int userId, int messageId)
+		private async void HandleNoChatsAvailable(CallbackQuery callbackQuery, IDatabaseAsync db, ITelegramBotClient botClient)
 		{
+			long chatId = callbackQuery.Message.Chat.Id;
+			int userId = callbackQuery.From.Id;
+			int messageId = callbackQuery.Message.MessageId;
 			var tokenSource = new CancellationTokenSource();
 			var token = tokenSource.Token;
 			var dbTask = db.KeyDeleteAsync(new RedisKey($"PendingQuestion:{userId}"));
@@ -166,9 +176,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			tokenSource.Dispose();
 		}
 
-		private async void HandleNoUsersAvailable(ITelegramBotClient botClient, CallbackQuery callbackQuery,
-			long chatId, int messageId, Chat[] chats)
+		private async void HandleNoUsersAvailable(CallbackQuery callbackQuery, ITelegramBotClient botClient, Chat[] chats)
 		{
+			long chatId = callbackQuery.Message.Chat.Id;
+			int messageId = callbackQuery.Message.MessageId;
 			var keyboardData = new List<KeyValuePair<string, string>>();
 
 			foreach (var chat in chats)
@@ -187,9 +198,13 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			await Task.WhenAll(new[] { answerTask, messageTask });
 		}
 
-		private async void HandleBotIsNotChatMember(IDatabaseAsync db, ITelegramBotClient botClient, CallbackQuery callbackQuery, long chatId, int userId, int messageId)
+		private async void HandleBotIsNotChatMember(CallbackQuery callbackQuery, 
+			IDatabaseAsync db, ITelegramBotClient botClient)
 		{
-			Chat[] chats = await GetChatsAvailableInfo(db, botClient, userId);
+			long chatId = callbackQuery.Message.Chat.Id;
+			int userId = callbackQuery.From.Id;
+			int messageId = callbackQuery.Message.MessageId;
+			Chat[] chats = await GetChatsAvailableInfo(callbackQuery, db, botClient);
 			var keyboardData = new List<KeyValuePair<string, string>>();
 
 			foreach (var chat in chats)
@@ -208,8 +223,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			await Task.WhenAll(new[] { answerTask, messageTask });
 		}
 
-		private async Task<Chat[]> GetChatsAvailableInfo(IDatabaseAsync db, ITelegramBotClient botClient, int userId)
+		private async Task<Chat[]> GetChatsAvailableInfo(CallbackQuery callbackQuery, 
+			IDatabaseAsync db, ITelegramBotClient botClient)
 		{
+			int userId = callbackQuery.From.Id;
 			RedisValue[] recordset = await db.SetMembersAsync(new RedisKey("MyGroups"));
 			var chatList = new List<long>(recordset.Select(e => long.Parse(e.ToString())));
 			var tasks = chatList.Select(c =>
@@ -251,12 +268,13 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			return chats;
 		}
 
-		private async Task<ChatMember> GetChatMemberInfo(IDatabaseAsync db, ITelegramBotClient botClient, 
-			long chatId, long toChatId, int toUserId)
+		private async Task<ChatMember> GetChatMemberInfo(CallbackQuery callbackQuery, 
+			IDatabaseAsync db, ITelegramBotClient botClient, long toChatId, int toUserId)
 		{
+			long chatId = callbackQuery.Message.Chat.Id;
 			var tokenSource = new CancellationTokenSource();
 			var token = tokenSource.Token;
-			var dbTask = db.SetContainsAsync(new RedisKey($"AskParticipants:{chatId}"), new RedisValue(toUserId.ToString()));
+			var dbTask = db.SetContainsAsync(new RedisKey($"AskParticipants:{toChatId}"), new RedisValue(toUserId.ToString()));
 			var memberInfoTask = botClient.GetChatMemberAsync(toChatId, toUserId, cancellationToken: token);
 
 			if (!dbTask.IsCompletedSuccessfully)

@@ -25,9 +25,10 @@ namespace MafaniaBot.Handlers
 			try
 			{
 				var tokenSource = new CancellationTokenSource();
+				var token = tokenSource.Token;
 				long chatId = message.Chat.Id;
 				User user = message.NewChatMembers[0];
-				string msg = null;
+				string msg;
 
 				Logger.Log.Debug($"NewChatMember HANDLER triggered: #chatId={chatId} new member #userId={user.Id}");
 
@@ -41,8 +42,7 @@ namespace MafaniaBot.Handlers
 						"/askmenu — меню анонимных вопросов.";
 
 					IDatabaseAsync db = redis.GetDatabase();
-					var dbTask = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
-					var token = tokenSource.Token;
+					var dbTask = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));				
 					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
 							cancellationToken: token);
 

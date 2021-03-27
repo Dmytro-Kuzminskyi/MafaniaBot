@@ -25,9 +25,10 @@ namespace MafaniaBot.Handlers
 			try
 			{
 				var tokenSource = new CancellationTokenSource();
+				var token = tokenSource.Token;
 				long chatId = message.Chat.Id;
 				User member = message.LeftChatMember;
-				string msg = null;
+				string msg;
 
 				Logger.Log.Debug($"LeftChatMember HANDLER triggered: #chatId={chatId} left member #userId={member.Id}");
 				IDatabaseAsync db = redis.GetDatabase();
@@ -47,8 +48,8 @@ namespace MafaniaBot.Handlers
 					string lastname = member.LastName;
 					string mention = Helper.GenerateMention(userId, firstname, lastname);
 					msg = mention + ", покинул(а) чат 😕";
-					var dbTask = db.SetRemoveAsync(new RedisKey($"AskParticipants:{chatId}"), new RedisValue(userId.ToString()));
-					var token = tokenSource.Token;
+					var dbTask = db.SetRemoveAsync(new RedisKey($"AskParticipants:{chatId}"), 
+						new RedisValue(userId.ToString()));				
 					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
 							cancellationToken: token);
 
