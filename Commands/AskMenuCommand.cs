@@ -31,8 +31,10 @@ namespace MafaniaBot.Commands
             try
             {
                 long chatId = message.Chat.Id;
-                int messageId = message.MessageId;
+                int userId = message.From.Id;
                 string msg;
+
+                Logger.Log.Info($"Initialized /ASKMENU #chatId={chatId} #userId={userId}");
 
                 if (message.Chat.Type == ChatType.Channel || message.Chat.Type == ChatType.Private)
                 {

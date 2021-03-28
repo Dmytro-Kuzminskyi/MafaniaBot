@@ -5,8 +5,6 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using StackExchange.Redis;
-using System.Threading;
-using System.Collections.Generic;
 
 namespace MafaniaBot.CallbackQueries.AskAnonymous
 {
@@ -41,21 +39,10 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
 				if (result)
 				{
-					var tokenSource = new CancellationTokenSource();
-					var token = tokenSource.Token;
 					msg = $"Пользователь {mention} отписался от анонимных вопросов!";
-					var dbTask = db.SetRemoveAsync(new RedisKey("AskParticipants:" + chatId.ToString()),
+					await db.SetRemoveAsync(new RedisKey("AskParticipants:" + chatId.ToString()),
 						new RedisValue(userId.ToString()));
-					var messageTask = botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, cancellationToken: token);
-
-					if (!dbTask.IsCompletedSuccessfully)
-					{
-						tokenSource.Cancel();
-						await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-					}
-
-					await Task.WhenAll(new List<Task> { dbTask, messageTask });
-					tokenSource.Dispose();
+					await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html);
 					return;
 				}
 

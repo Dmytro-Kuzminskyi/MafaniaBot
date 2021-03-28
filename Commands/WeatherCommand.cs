@@ -41,9 +41,12 @@ namespace MafaniaBot.Commands
             try
             {
                 long chatId = message.Chat.Id;
+                int userId = message.From.Id;
                 int messageId = message.MessageId;
                 string input = message.Text;
-                string msg = null;
+                string msg;
+
+                Logger.Log.Info($"Initialized /WEATHER #chatId={chatId} #userId={userId}");
 
                 if (input.Length < 10)
                 {

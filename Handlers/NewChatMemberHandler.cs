@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -24,8 +22,6 @@ namespace MafaniaBot.Handlers
 		{
 			try
 			{
-				var tokenSource = new CancellationTokenSource();
-				var token = tokenSource.Token;
 				long chatId = message.Chat.Id;
 				User user = message.NewChatMembers[0];
 				string msg;
@@ -42,17 +38,8 @@ namespace MafaniaBot.Handlers
 						"/askmenu — меню анонимных вопросов.";
 
 					IDatabaseAsync db = redis.GetDatabase();
-					var dbTask = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));				
-					var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
-							cancellationToken: token);
-
-					if (!dbTask.IsCompletedSuccessfully)
-					{
-						tokenSource.Cancel();
-					}
-
-					await Task.WhenAll(new List<Task> { dbTask, messageTask });
-					tokenSource.Dispose();
+					await db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));				
+					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 					return;
 				}
 

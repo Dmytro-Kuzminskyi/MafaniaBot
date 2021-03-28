@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -37,8 +35,6 @@ namespace MafaniaBot.Commands
 		{
 			try
 			{
-				var tokenSource = new CancellationTokenSource();
-				var token = tokenSource.Token;
 				long chatId = message.Chat.Id;
 				int userId = message.From.Id;
 				int messageId = message.MessageId;
@@ -47,16 +43,18 @@ namespace MafaniaBot.Commands
 				string mention = Helper.GenerateMention(userId, firstname, lastname);
 				string msg;
 
+				Logger.Log.Info($"Initialized /START #chatId={chatId} #userId={userId}");
+
 				if (message.Chat.Type != ChatType.Private)
 				{
 					msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
 					await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, replyToMessageId: messageId);
 					return;
 				}
-
+				
 				IDatabaseAsync db = redis.GetDatabase();
-				var dbTask = db.SetAddAsync(new RedisKey("MyChatMembers"), new RedisValue(userId.ToString()));
-
+				await db.SetAddAsync(new RedisKey("MyChatMembers"), new RedisValue(userId.ToString()));
+		
 				if (message.Text.Equals(PatternAskAnonRegister))
 				{
 					msg = "Теперь вы можете подписаться на анонимные вопросы!";
@@ -74,17 +72,7 @@ namespace MafaniaBot.Commands
 					"/askmenu — меню анонимных вопросов\n\n";
 				var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
 				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
-				var messageTask = botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard, 
-					cancellationToken: token);
-
-				if (!dbTask.IsCompletedSuccessfully)
-				{
-					tokenSource.Cancel();
-					await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-				}
-
-				await Task.WhenAll(new List<Task> { dbTask, messageTask });
-				tokenSource.Dispose();
+				await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
 			}
 			catch (Exception ex)
 			{

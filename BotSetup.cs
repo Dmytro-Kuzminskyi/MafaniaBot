@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Net.Http;
+using System.Threading;
 using System.Collections.Generic;
 using Telegram.Bot;
 using Newtonsoft.Json;
@@ -31,6 +32,8 @@ namespace MafaniaBot
             {
                 Logger.Log.Error("/deleteWebhook error", ex);
             }
+
+            Thread.Sleep(10_000);
 
             try
             { 

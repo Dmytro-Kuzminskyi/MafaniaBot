@@ -30,7 +30,10 @@ namespace MafaniaBot.Commands
             try
             {
                 long chatId = message.Chat.Id;
+                int userId = message.From.Id;
                 int messageId = message.MessageId;
+
+                Logger.Log.Info($"Initialized /HELP #chatId={chatId} #userId={userId}");
 
                 string msg =
                     "<b>Общие команды</b>\n" +

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using MafaniaBot.Abstractions;
@@ -33,7 +32,9 @@ namespace MafaniaBot.Commands
         public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
             try
-            {   
+            {
+                Logger.Log.Info($"Initialized /ASK #chatId={message.Chat.Id} #userId={message.From.Id}");
+
                 if (message.Chat.Type != ChatType.Private)
                 {
                     string msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
@@ -44,8 +45,10 @@ namespace MafaniaBot.Commands
 
                 IDatabaseAsync db = redis.GetDatabase();
                 var chatAvailableTask = GetChatsAvailableInfo(message, db, botClient);
+
                 if (await HandlePendingAnswer(message, db, botClient))
                     return;
+
                 if (await HandlePendingQuestion(message, db, botClient))
                     return;
 
@@ -64,8 +67,7 @@ namespace MafaniaBot.Commands
             long chatId = message.Chat.Id;
             int userId = message.From.Id;
             bool state = false;
-            bool value = await db.HashExistsAsync(new RedisKey($"PendingAnswer:{userId}"),
-                        new RedisValue("Status"));
+            bool value = await db.HashExistsAsync(new RedisKey($"PendingAnswer:{userId}"), new RedisValue("Status"));
 
             if (value)
             {
@@ -82,8 +84,7 @@ namespace MafaniaBot.Commands
             long chatId = message.Chat.Id;
             int userId = message.From.Id;
             bool state = false;
-            bool value = await db.HashExistsAsync(new RedisKey($"PendingQuestion:{userId}"),
-                        new RedisValue("Status"));
+            bool value = await db.HashExistsAsync(new RedisKey($"PendingQuestion:{userId}"), new RedisValue("Status"));
 
             if (value)
             {
@@ -143,8 +144,6 @@ namespace MafaniaBot.Commands
 		{
             long chatId = message.Chat.Id;
             int userId = message.From.Id;
-            var tokenSource = new CancellationTokenSource();
-            var token = tokenSource.Token;
             string msg;
 
 			if (chats.Length == 0)
@@ -158,30 +157,20 @@ namespace MafaniaBot.Commands
                 return;
             }
 
-            var dbPendingQuestionTask = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
+            var dbTask = db.HashSetAsync(new RedisKey($"PendingQuestion:{userId}"),
                     new[] { new HashEntry(new RedisValue("Status"), new RedisValue("Initiated")) });
             var keyboardData = new List<KeyValuePair<string, string>>();
 
             foreach (var chat in chats)
             {
                 keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Id}"));
-            }
-
+            }    
             msg = "Выберите чат, участникам которого вы желаете задать анонимный вопрос";
             var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
             var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
             keyboard.Add(cancelBtn);
-            var messageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard),
-                    cancellationToken: token);
-
-            if (!dbPendingQuestionTask.IsCompletedSuccessfully)
-            {
-                tokenSource.Cancel();
-                await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-            }
-
-            await Task.WhenAll(new[] { dbPendingQuestionTask, messageTask });
-            tokenSource.Dispose();
+            await dbTask;
+            await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
         }
     }
 }

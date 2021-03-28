@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 using MafaniaBot.Abstractions;
 using Telegram.Bot;
 using Telegram.Bot.Types;
@@ -35,13 +33,13 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				Logger.Log.Debug($"Initiated answer& from #chatId={chatId} by #userId={callbackQuery.From.Id} with #data={callbackQuery.Data}");
 
 				IDatabaseAsync db = redis.GetDatabase();
+
 				if (await HandlePendingAnswer(callbackQuery, db, botClient))
 					return;
+
 				if (await HandlePendingQuestion(callbackQuery, db, botClient))
 					return;
 
-				var tokenSource = new CancellationTokenSource();
-				var token = tokenSource.Token;
 				var dbTask = db.HashSetAsync(new RedisKey($"PendingAnswer:{userId}"),
 						new[] { new HashEntry("Status", "Initiated"),
 								new HashEntry("ToUserId", toUserId.ToString()),
@@ -50,17 +48,8 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				msg = "Напишите ответ на вопрос";
 				var cancelBtn = InlineKeyboardButton.WithCallbackData("Отмена", "answer_cancel&");
 				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { cancelBtn } });
-				var messageTask = botClient.EditMessageTextAsync(userId, messageId, msg, replyMarkup: keyboard, 
-					cancellationToken: token);
-
-				if (!dbTask.IsCompletedSuccessfully)
-				{
-					tokenSource.Cancel();
-					await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-				}
-
-				await Task.WhenAll(new List<Task> { dbTask, messageTask });
-				tokenSource.Dispose();
+				await dbTask;
+				await botClient.EditMessageTextAsync(userId, messageId, msg, replyMarkup: keyboard);
 			}
 			catch (Exception ex)
 			{

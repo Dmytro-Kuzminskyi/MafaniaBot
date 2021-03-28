@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using MafaniaBot.Abstractions;
@@ -50,8 +49,7 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
 				if (!isUserSubscribed)
 				{
-					msg = "Этот пользователь отписался от анонимных вопросов!";
-					await botClient.SendTextMessageAsync(chatId, msg);
+					msg = "Этот пользователь отписался от анонимных вопросов!\n";
 					RedisValue[] chatMembers = await db.SetMembersAsync(new RedisKey($"AskParticipants:{toChatId}"));
 					var userList = chatMembers.Select(e => int.Parse(e.ToString()))
 											.Where(id => id != callbackQuery.From.Id).ToArray();
@@ -62,15 +60,15 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 
 						if (chats.Length == 0)
 						{
-							HandleNoChatsAvailable(callbackQuery, db, botClient);
+							HandleNoChatsAvailable(callbackQuery, db, botClient, msg);
 							return;
 						}
 
-						HandleNoUsersAvailable(callbackQuery, botClient, chats);
+						HandleNoUsersAvailable(callbackQuery, botClient, chats, msg);
 						return;
 					}
 
-					ProcessSelectUser(callbackQuery, botClient, userList, toChatId, toUserId);
+					ProcessSelectUser(callbackQuery, botClient, userList, toChatId, toUserId, msg);
 					return;
 				}
 				
@@ -88,14 +86,12 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			long chatId = callbackQuery.Message.Chat.Id;
 			int userId = callbackQuery.From.Id;
 			int messageId = callbackQuery.Message.MessageId;
-			ChatMember member = await GetChatMemberInfo(callbackQuery, db, botClient, toChatId, toUserId);
+			ChatMember member = await GetChatMemberInfo(db, botClient, toChatId, toUserId);
 
 			if (member.Status == ChatMemberStatus.Creator || 
 				member.Status == ChatMemberStatus.Administrator || 
 				member.Status == ChatMemberStatus.Member)
 			{
-				var tokenSource = new CancellationTokenSource();
-				var token = tokenSource.Token;
 				string firstname = member.User.FirstName;
 				string lastname = member.User.LastName;
 				string mention = Helper.GenerateMention(toUserId, firstname, lastname);
@@ -109,21 +105,13 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 				var toChatTitle = (await chatInfoTask).Title;
 				var msg = $"Напишите анонимный вопрос для {mention} из чата " +
 					$"<b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>";
-				var messageTask = botClient.EditMessageTextAsync(chatId, messageId, msg, ParseMode.Html, replyMarkup: keyboard, cancellationToken: token);
-
-				if (!dbTask.IsCompletedSuccessfully)
-				{
-					tokenSource.Cancel();
-					await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-				}
-
-				await Task.WhenAll(new List<Task> { dbTask, messageTask });
-				tokenSource.Dispose();
+				await dbTask;
+				await botClient.EditMessageTextAsync(chatId, messageId, msg, ParseMode.Html, replyMarkup: keyboard);
 			}
 		}
 
 		private async void ProcessSelectUser(CallbackQuery callbackQuery, ITelegramBotClient botClient,
-			int[] userList, long toChatId, int toUserId)
+			int[] userList, long toChatId, int toUserId, string msg)
 		{
 			long chatId = callbackQuery.Message.Chat.Id;
 			int userId = callbackQuery.From.Id;
@@ -150,58 +138,45 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
 			keyboard.Add(cancelBtn);
 			var toChatTitle = (await chatInfoTask).Title;
-			var msg = $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>, " +
+			msg += $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>, " +
 				$"которому вы желаете задать анонимный вопрос";
-			var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html,
+			await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html,
 				replyMarkup: new InlineKeyboardMarkup(keyboard));
-			var deleteTask = botClient.DeleteMessageAsync(chatId, messageId);
-			await Task.WhenAll(new[] { messageTask, deleteTask });
 		}
 
-		private async void HandleNoChatsAvailable(CallbackQuery callbackQuery, IDatabaseAsync db, ITelegramBotClient botClient)
+		private async void HandleNoChatsAvailable(CallbackQuery callbackQuery, IDatabaseAsync db, ITelegramBotClient botClient,
+			string msg)
 		{
 			long chatId = callbackQuery.Message.Chat.Id;
 			int userId = callbackQuery.From.Id;
 			int messageId = callbackQuery.Message.MessageId;
-			var tokenSource = new CancellationTokenSource();
-			var token = tokenSource.Token;
 			var dbTask = db.KeyDeleteAsync(new RedisKey($"PendingQuestion:{userId}"));
-			var msg = "Нет подходящих чатов, где можно задать анонимный вопрос!\n" +
+			msg += "Нет подходящих чатов, где можно задать анонимный вопрос!\n" +
 				"Вы можете добавить бота в группу";
-			var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", $"{Startup.BOT_URL}?startgroup=1");
-			var keyboardReg = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
-			var messageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboardReg, cancellationToken: token);
-			var deleteTask = botClient.DeleteMessageAsync(chatId, messageId);
-
-			if (!dbTask.IsCompletedSuccessfully)
-			{
-				tokenSource.Cancel();
-				await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-			}
-
-			await Task.WhenAll(new List<Task> { dbTask, messageTask, deleteTask });
-			tokenSource.Dispose();
+			var addBtn = InlineKeyboardButton.WithUrl("Добавить в группу", $"{Startup.BOT_URL}?startgroup=1");
+			var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { addBtn } });
+			await dbTask;
+			await botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: keyboard);
 		}
 
-		private async void HandleNoUsersAvailable(CallbackQuery callbackQuery, ITelegramBotClient botClient, Chat[] chats)
+		private async void HandleNoUsersAvailable(CallbackQuery callbackQuery, ITelegramBotClient botClient, 
+			Chat[] chats, string msg)
 		{
 			long chatId = callbackQuery.Message.Chat.Id;
 			int messageId = callbackQuery.Message.MessageId;
 			var keyboardData = new List<KeyValuePair<string, string>>();
+			msg += "В этом чате никто не подписан на анонимные вопросы!\n" +
+				"Выберите чат, участникам которого вы желаете задать анонимный вопрос";
 
 			foreach (var chat in chats)
 			{
 				keyboardData.Add(new KeyValuePair<string, string>(chat.Title, $"ask_select_chat&{chat.Id}"));
 			}
-
-			var msg = "В этом чате никто не подписан на анонимные вопросы!\n" +
-				"Выберите чат, участникам которого вы желаете задать анонимный вопрос";
+	
 			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
 			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
 			keyboard.Add(cancelBtn);
-			var messageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
-			var deleteTask = botClient.DeleteMessageAsync(chatId, messageId);
-			await Task.WhenAll(new[] { messageTask, deleteTask });
+			await botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
 		}
 
 		private async void HandleBotIsNotChatMember(CallbackQuery callbackQuery, 
@@ -270,27 +245,11 @@ namespace MafaniaBot.CallbackQueries.AskAnonymous
 			return chats;
 		}
 
-		private async Task<ChatMember> GetChatMemberInfo(CallbackQuery callbackQuery, 
-			IDatabaseAsync db, ITelegramBotClient botClient, long toChatId, int toUserId)
+		private async Task<ChatMember> GetChatMemberInfo(IDatabaseAsync db, ITelegramBotClient botClient, 
+			long toChatId, int toUserId)
 		{
-			long chatId = callbackQuery.Message.Chat.Id;
-			var tokenSource = new CancellationTokenSource();
-			var token = tokenSource.Token;
 			var dbTask = db.SetContainsAsync(new RedisKey($"AskParticipants:{toChatId}"), new RedisValue(toUserId.ToString()));
-			var memberInfoTask = botClient.GetChatMemberAsync(toChatId, toUserId, cancellationToken: token);
-
-			if (!dbTask.IsCompletedSuccessfully)
-			{
-				tokenSource.Cancel();
-				await botClient.SendTextMessageAsync(chatId, "❌Ошибка сервера❌", ParseMode.Html);
-			}
-
-			if (await dbTask)
-			{
-				return await memberInfoTask;
-			}
-
-			return null;
+			return (await dbTask) ? await botClient.GetChatMemberAsync(toChatId, toUserId) : null;
 		}
 	}
 }
