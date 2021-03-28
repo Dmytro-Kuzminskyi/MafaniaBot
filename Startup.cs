@@ -1,4 +1,3 @@
-using MafaniaBot.Models;
 using MafaniaBot.Engines;
 using MafaniaBot.Services;
 using MafaniaBot.Abstractions;

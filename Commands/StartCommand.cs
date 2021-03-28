@@ -40,7 +40,7 @@ namespace MafaniaBot.Commands
 				int messageId = message.MessageId;
 				string firstname = message.From.FirstName;
 				string lastname = message.From.LastName;
-				string mention = Helper.GenerateMention(userId, firstname, lastname);
+				string mention = lastname == null ? firstname : $"{firstname} {lastname}";
 				string msg;
 
 				Logger.Log.Info($"Initialized /START #chatId={chatId} #userId={userId}");
@@ -62,7 +62,7 @@ namespace MafaniaBot.Commands
 					return;
 				}
 
-				msg = "<b>Привет, " + mention + "!</b>\n\n" +
+				msg = $"<b>Привет, {Helper.ConvertTextToHtmlParseMode(mention)}!</b>\n\n" +
 					"<b>Общие команды</b>\n" +
 					"/weather [city] — узнать текущую погоду\n" +
 					"/help — справка по командам\n\n" +

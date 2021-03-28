@@ -14,12 +14,8 @@
 	  <PackageReference Include="FluentValidation.AspNetCore" Version="9.5.3" />
 	  <PackageReference Include="log4net" Version="2.0.12" />
 	  <PackageReference Include="Microsoft.AspNetCore.Mvc.NewtonsoftJson" Version="5.0.4" />
-	  <PackageReference Include="Microsoft.EntityFrameworkCore" Version="5.0.4" />
-	  <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="5.0.1" />
 	  <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.10.8" />
-	  <PackageReference Include="MySql.EntityFrameworkCore" Version="5.0.0" />
 	  <PackageReference Include="StackExchange.Redis" Version="2.2.4" />
-	  <PackageReference Include="StackExchange.Redis.Extensions.Core" Version="6.4.5" />
       <PackageReference Include="Telegram.Bot" Version="15.7.1" />
   </ItemGroup>
 

@@ -56,8 +56,9 @@ namespace MafaniaBot
 			if (parseMode == ParseMode.Html)
 			{
 				mention = lastname != null ?
-						$"<a href=\"tg://user?id={userId}\">" + ConvertTextToHtmlParseMode(firstname) + " " + Helper.ConvertTextToHtmlParseMode(lastname) + "</a>" :
-						$"<a href=\"tg://user?id={userId}\">" + ConvertTextToHtmlParseMode(firstname) + "</a>";
+						$"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)} " +
+						$"{ConvertTextToHtmlParseMode(lastname)}</a>" :
+						$"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)}</a>";
 			}
 
 			return mention;
@@ -69,7 +70,7 @@ namespace MafaniaBot
 			{
 				text = text.Replace("<", "");
 				text = text.Replace(">", "");
-				text = text.Replace("&", "");
+				text = text.Replace("&", "&amp;");
 				return text;
 			}
 			return null;

@@ -131,7 +131,9 @@ namespace MafaniaBot.Handlers
 					var dbTask2 = db.KeyDeleteAsync(new RedisKey($"PendingQuestion:{userId}"));
 					await Task.WhenAll(new[] { dbTask0, dbTask1, dbTask2 });
 					msg = "Сообщение не отправлено, пользователь заблокировал бота!";
-					await botClient.EditMessageTextAsync(chatId, messageId, msg);
+					var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+					var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg);
+					await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 				}
 			}
 
@@ -145,7 +147,9 @@ namespace MafaniaBot.Handlers
 				msg = $"Вопрос успешно отправлен пользователю {mention} из чата " +
 					$"<b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>";
 				await dbTask;
-				await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html);
+				var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+				var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+				await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 			}
 		}
 
@@ -205,7 +209,9 @@ namespace MafaniaBot.Handlers
 			var addBtn = InlineKeyboardButton.WithUrl("Добавить в группу", $"{Startup.BOT_URL}?startgroup=1");
 			var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { addBtn } });
 			await dbTask;
-			await botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: keyboard);
+			var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+			var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboard);
+			await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 		}
 
 		private async void HandleNoUsersAvailable(Message message, ITelegramBotClient botClient, Chat[] chats, string msg)
@@ -224,7 +230,9 @@ namespace MafaniaBot.Handlers
 			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
 			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
 			keyboard.Add(cancelBtn);
-			await botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+			var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+			var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+			await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 		}
 
 		private async void ProcessSelectUser(Message message, ITelegramBotClient botClient,
@@ -257,8 +265,10 @@ namespace MafaniaBot.Handlers
 			var toChatTitle = (await chatInfoTask).Title;
 			msg += $"Выберите участника группы <b>{Helper.ConvertTextToHtmlParseMode(toChatTitle)}</b>, " +
 				$"которому вы желаете задать анонимный вопрос";
-			await botClient.EditMessageTextAsync(chatId, messageId, msg, parseMode: ParseMode.Html,
+			var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+			var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, 
 				replyMarkup: new InlineKeyboardMarkup(keyboard));
+			await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 		}
 
 		private async void HandleBotIsNotChatMember(Message message,
@@ -279,7 +289,9 @@ namespace MafaniaBot.Handlers
 			var keyboard = Helper.CreateInlineKeyboard(keyboardData, 1, "CallbackData").InlineKeyboard.ToList();
 			var cancelBtn = new InlineKeyboardButton[] { InlineKeyboardButton.WithCallbackData("Отмена", "ask_cancel&") };
 			keyboard.Add(cancelBtn);
-			await botClient.EditMessageTextAsync(chatId, messageId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+			var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+			var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg, replyMarkup: new InlineKeyboardMarkup(keyboard));
+			await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 		}
 
 		private async void HandlePendingAnswer(Message message, IDatabaseAsync db, ITelegramBotClient botClient, 
@@ -319,7 +331,9 @@ namespace MafaniaBot.Handlers
 					var dbTask1 = db.KeyDeleteAsync(new RedisKey($"PendingAnswer:{userId}"));
 					await Task.WhenAll(new[] { dbTask0, dbTask1 });
 					msg = "Сообщение не отправлено, пользователь заблокировал бота!";
-					await botClient.EditMessageTextAsync(chatId, messageId, msg);
+					var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+					var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg);
+					await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 				}
 			}
 
@@ -327,7 +341,9 @@ namespace MafaniaBot.Handlers
 			{
 				msg = "Ответ успешно отправлен!";
 				await db.KeyDeleteAsync(new RedisKey($"PendingAnswer:{userId}"));
-				await botClient.EditMessageTextAsync(chatId, messageId, msg);
+				var deleteMessageTask = botClient.DeleteMessageAsync(chatId, messageId);
+				var sendMessageTask = botClient.SendTextMessageAsync(chatId, msg);
+				await Task.WhenAll(new[] { deleteMessageTask, sendMessageTask });
 			}
 		}
 	}

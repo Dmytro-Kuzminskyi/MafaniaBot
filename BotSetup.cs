@@ -33,7 +33,7 @@ namespace MafaniaBot
                 Logger.Log.Error("/deleteWebhook error", ex);
             }
 
-            Thread.Sleep(10_000);
+            Thread.Sleep(5_000);
 
             try
             { 
