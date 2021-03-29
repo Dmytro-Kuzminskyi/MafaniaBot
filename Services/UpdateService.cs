@@ -19,6 +19,10 @@ namespace MafaniaBot.Services
                 new AskMenuCommand(),
                 new AskCommand(),
                 new WeatherCommand(),
+                new GreetingCommand(),
+                new SetGreetingCommand(),
+                new FarewellCommand(),
+                new SetFarewellCommand(),
                 new HelpCommand(),
                 new StartCommand(),
             };
