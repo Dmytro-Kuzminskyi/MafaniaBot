@@ -24,6 +24,7 @@ namespace MafaniaBot.Handlers
 			{
 				long chatId = message.Chat.Id;
 				User user = message.NewChatMembers[0];
+				IDatabaseAsync db = redis.GetDatabase();
 				string msg;
 
 				Logger.Log.Debug($"NewChatMember HANDLER triggered: #chatId={chatId} new member #userId={user.Id}");
@@ -32,13 +33,19 @@ namespace MafaniaBot.Handlers
 				{
 					msg =
 						"<b>Общие команды</b>\n" +
-						"/weather [city] — узнать текущую погоду.\n" +
-						"/ask — задать анонимный вопрос.\n\n" +
+						"/weather [city] — узнать текущую погоду\n" +
+						"/help — справка по командам\n\n" +
+						"<b>Команды личного чата</b>\n" +
+						"/ask — задать анонимный вопрос\n\n" +
 						"<b>Команды группового чата</b>\n" +
-						"/askmenu — меню анонимных вопросов.";
+						"/askmenu — меню анонимных вопросов\n\n";
 
-					IDatabaseAsync db = redis.GetDatabase();
-					await db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));				
+					string defaultGreetingMsg = "добро пожаловать 😊";
+					string defaultFarewellMsg = "покинул(а) чат 😕";					
+					var dbTask0 = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
+					var dbTask1 = db.StringSetAsync(new RedisKey($"Greeting:{chatId}"), new RedisValue(defaultGreetingMsg));
+					var dbTask2 = db.StringSetAsync(new RedisKey($"Farewell:{chatId}"), new RedisValue(defaultFarewellMsg));
+					await Task.WhenAll(new[] { dbTask0, dbTask1, dbTask2 });				
 					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 					return;
 				}
@@ -49,8 +56,9 @@ namespace MafaniaBot.Handlers
 
 				if (!user.IsBot)
 				{
+					string greetingMsg = (await db.StringGetAsync(new RedisKey($"Greeting:{chatId}"))).ToString();
 					string mention = Helper.GenerateMention(userId, firstname, lastname);
-					msg = mention + ", добро пожаловать 😊";
+					msg = mention + $", {greetingMsg}";
 					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 				}
 			}

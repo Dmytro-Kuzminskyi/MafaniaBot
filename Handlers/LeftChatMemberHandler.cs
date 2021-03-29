@@ -34,7 +34,9 @@ namespace MafaniaBot.Handlers
 				{
 					var dbTask0 = db.SetRemoveAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
 					var dbTask1 = db.KeyDeleteAsync(new RedisKey($"AskParticipants:{chatId}"));
-					await Task.WhenAll(new[] { dbTask0, dbTask1 });
+					var dbTask2 = db.KeyDeleteAsync(new RedisKey($"Greeting:{chatId}"));
+					var dbTask3 = db.KeyDeleteAsync(new RedisKey($"Farewell:{chatId}"));
+					await Task.WhenAll(new[] { dbTask0, dbTask1, dbTask2, dbTask3 });
 					return;
 				}
 
@@ -43,8 +45,9 @@ namespace MafaniaBot.Handlers
 					int userId = member.Id;
 					string firstname = member.FirstName;
 					string lastname = member.LastName;
+					string farewellMsg = (await db.StringGetAsync(new RedisKey($"Farewell:{chatId}"))).ToString();
 					string mention = Helper.GenerateMention(userId, firstname, lastname);
-					msg = mention + ", покинул(а) чат 😕";
+					msg = mention + $", {farewellMsg}";
 					await db.SetRemoveAsync(new RedisKey($"AskParticipants:{chatId}"), new RedisValue(userId.ToString()));
 					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 				}

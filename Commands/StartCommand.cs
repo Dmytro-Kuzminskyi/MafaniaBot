@@ -69,6 +69,10 @@ namespace MafaniaBot.Commands
 					"<b>Команды личного чата</b>\n" +
 					"/ask — задать анонимный вопрос\n\n" +
 					"<b>Команды группового чата</b>\n" +
+					"[Creator] /setg — установка приветствия группы\n" +
+					"[Creator] /setf — установка прощания группы\n" +
+					"/greeting — просмотр приветствия группы\n" +
+					"/farewell — просмотр прощания группы\n" +
 					"/askmenu — меню анонимных вопросов\n\n";
 				var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
 				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
