@@ -2,6 +2,7 @@
 using MafaniaBot.Abstractions;
 using MafaniaBot.Commands;
 using MafaniaBot.Handlers;
+using MafaniaBot.CallbackQueries;
 using MafaniaBot.CallbackQueries.AskAnonymous;
 using Telegram.Bot.Types;
 
@@ -12,10 +13,12 @@ namespace MafaniaBot.Services
         private readonly List<Command> _commands;
         private readonly List<Entity<Message>> _handlers;
         private readonly List<Entity<CallbackQuery>> _callbackQueries;
+
         public UpdateService()
         {
             _commands = new List<Command>
             {
+                new WordsCommand(),
                 new AskMenuCommand(),
                 new AskCommand(),
                 new WeatherCommand(),
@@ -28,12 +31,14 @@ namespace MafaniaBot.Services
             };
             _handlers = new List<Entity<Message>>
             {
+                new WordsGameHandler(),
                 new AskAnonymousHandler(),
                 new NewChatMemberHandler(),
                 new LeftChatMemberHandler()
             };
             _callbackQueries = new List<Entity<CallbackQuery>>
             {
+                new WordsGameStartCallbackQuery(),
                 new AskSelectChatCallbackQuery(),
                 new AskSelectUserCallbackQuery(),
                 new AskCancelCallbackQuery(),
