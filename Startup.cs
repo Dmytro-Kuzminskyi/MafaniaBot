@@ -15,7 +15,6 @@ namespace MafaniaBot
         private readonly IConfiguration _configuration;
 
         internal static string REDIS_CONNECTION { get; private set; }
-        internal static string DATABASE_URL { get; private set; }
         internal static string BOT_URL { get; private set; }
         internal static string BOT_USERNAME { get; private set; }
 
@@ -30,12 +29,12 @@ namespace MafaniaBot
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var updateService = new UpdateService();
+            var updateService = new UpdateService();         
 
             services
                 .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))
                 .AddScoped<IUpdateEngine, UpdateEngine>()
-                .AddSingleton<IUpdateService>(updateService)
+                .AddSingleton<IUpdateService>(updateService)            
                 .ConfigureBotWebhook(_configuration)
                 .ConfigureBotCommands(_configuration, updateService)
                 .AddControllers()

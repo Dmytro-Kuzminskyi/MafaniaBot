@@ -18,5 +18,9 @@
 	  <PackageReference Include="StackExchange.Redis" Version="2.2.4" />
       <PackageReference Include="Telegram.Bot" Version="15.7.1" />
   </ItemGroup>
+	
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if not exist &quot;$(ProjectDir)$(OutDir)data&quot; mkdir &quot;$(ProjectDir)$(OutDir)data&quot;&#xD;&#xA;copy $(ProjectDir)Data\ $(ProjectDir)$(OutDir)data\" />
+  </Target>
 
 </Project>
