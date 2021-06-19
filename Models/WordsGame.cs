@@ -6,7 +6,8 @@ using System.Collections.Generic;
 using Telegram.Bot;
 using Telegram.Bot.Types.Enums;
 using MafaniaBot.Engines;
-using MafaniaBot.Enums;
+using MafaniaBot.Constants;
+using MafaniaBot.Helpers;
 
 namespace MafaniaBot.Models
 {
@@ -76,12 +77,12 @@ namespace MafaniaBot.Models
 
 				if (FirstPlayerScore > SecondPlayerScore)
 				{
-					msg += $"🏆 Победитель {Helper.ConvertTextToHtmlParseMode(FirstPlayer.Item2)}! 🏆\n";
+					msg += $"🏆 Победитель {TextHelper.ConvertTextToHtmlParseMode(FirstPlayer.Item2)}! 🏆\n";
 				}
 
 				if (SecondPlayerScore > FirstPlayerScore)
 				{
-					msg += $"🏆 Победитель {Helper.ConvertTextToHtmlParseMode(SecondPlayer.Item2)}! 🏆\n";
+					msg += $"🏆 Победитель {TextHelper.ConvertTextToHtmlParseMode(SecondPlayer.Item2)}! 🏆\n";
 				}
 
 				if (FirstPlayerScore == SecondPlayerScore)
@@ -89,7 +90,7 @@ namespace MafaniaBot.Models
 					msg += "🌝 Ничья! 🌚\n";
 				}
 
-				msg += Helper.GenerateWordsGameBoard(this);
+				msg += GameHelper.GenerateWordsGameBoard(this);
 				botClient.SendTextMessageAsync(ChatId, msg, parseMode: ParseMode.Html);
 			}
 			catch (Exception ex)

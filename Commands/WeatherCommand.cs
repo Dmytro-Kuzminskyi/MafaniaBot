@@ -1,142 +1,148 @@
 ﻿using MafaniaBot.Abstractions;
+using MafaniaBot.Dictionaries;
+using MafaniaBot.Helpers;
+using MafaniaBot.Models;
+using Newtonsoft.Json;
+using RestSharp;
+using StackExchange.Redis;
+using System;
+using System.Net;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using System;
-using System.Net;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
-using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
     public class WeatherCommand : Command
     {
-        public override string Pattern { get; }
+        public override string Pattern => @"/weather";
+        public override string Description => "Прогноз погоды";
 
-        public override string Description { get; }
+        private string city;
+        private string units = "metric";
+        private readonly string weatherAPIUrl = @"http://api.openweathermap.org/data/2.5/weather?q=";
+        private readonly string weatherAPIKey = @"&appid=3427c491991e1ae8f4ec32a65206ccf1";
+        private readonly string weatherUnits = @"&units=";
+        private readonly string weatherLangCode = @"&lang=";
 
-        private string city = null;
-		private string units = "metric";
-		private readonly string weatherAPIUrl = @"http://api.openweathermap.org/data/2.5/weather?q=";
-		private readonly string weatherAPIKey = @"&appid=3427c491991e1ae8f4ec32a65206ccf1";
-		private readonly string weatherUnits = @"&units=";
-
-        public WeatherCommand()
+        public override bool Contains(Message message)
         {
-            Pattern = @"/weather";
-            Description = "Прогноз погоды";
+            return message.Text.StartsWith(Pattern) && !message.From.IsBot;
         }
 
-		public override bool Contains(Message message)
-		{
-			return message.Text.StartsWith(Pattern) && !message.From.IsBot;
-		}
-
-		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer cache)
-		{
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis, IlocalizeService localizer)
+        {
             try
             {
-                long chatId = message.Chat.Id;
-                int userId = message.From.Id;
-                int messageId = message.MessageId;
-                string input = message.Text;
+                var chatId = message.Chat.Id;
+                var fromId = message.From.Id;
+                var messageId = message.MessageId;
+                var inputQuery = message.Text;
+                string langCode = message.From.LanguageCode;
                 string msg;
 
-                Logger.Log.Info($"Initialized /WEATHER #chatId={chatId} #userId={userId}");
+                Logger.Log.Info($"{GetType().Name}: #chatId={message.Chat.Id} #fromId={message.From}");
 
-                if (input.Length < 10)
+                localizer.Initialize(GetType().Name);
+                langCode = await DBHelper.GetSetUserLanguageCodeAsync(redis, fromId, langCode);
+
+                if (inputQuery.Length < 10)
                 {
-                    msg = "Введите команду в формате /weather [city]";
+                    msg = localizer.GetResource("IncorrectWeatherFormat", langCode);
 
-                    Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg=Incorrect command format #replyToMessageId={messageId}");
+                    if (message.Chat.Type == ChatType.Private)
+                    {
+                        await botClient.SendTextMessageAsync(chatId, msg);
 
-                    await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+                        Logger.Log.Debug($"{GetType().Name}: #chatId={chatId} #msg={msg}");
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+
+                        Logger.Log.Debug($"{GetType().Name}: #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
+                    }
                 }
                 else
                 {
-                    int startPos = input.IndexOf(' ');
-                    int endPos = input.IndexOf(' ', startPos + 1);
+                    var startPos = inputQuery.IndexOf(' ');
+                    var endPos = inputQuery.IndexOf(' ', startPos + 1);
                     city = endPos == -1 ?
-                        input.Substring(startPos + 1) :
-                        input.Substring(startPos + 1, endPos - startPos);
+                        inputQuery.Substring(startPos + 1) :
+                        inputQuery.Substring(startPos + 1, endPos - startPos);
                     city = Regex.Replace(city, @"[^a-zA-Zа-яА-Я\-]+", "");
 
-                    try
+                    var client = new RestClient(weatherAPIUrl + city + weatherAPIKey + weatherUnits + units + weatherLangCode + langCode);
+                    var request = new RestRequest(Method.GET);
+                    var response = client.Execute(request);
+
+                    if (response.StatusCode != HttpStatusCode.OK)
                     {
-                        HttpWebRequest request = (HttpWebRequest)
-                            WebRequest.Create(weatherAPIUrl + city + weatherAPIKey + weatherUnits + units);
-
-                        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-
-                        using var receiveStream = response.GetResponseStream();
-                        using var readStream = new StreamReader(receiveStream, Encoding.UTF8);
-                        string jsonResponse = readStream.ReadToEnd();
-
-                        JObject obj = JObject.Parse(jsonResponse);
-                        string name = obj["name"].ToString();
-                        string country = obj["sys"]["country"].ToString();
-                        float temp = float.Parse(obj["main"]["temp"].ToString());
-                        float feels_like = float.Parse(obj["main"]["feels_like"].ToString());
-                        float temp_min = float.Parse(obj["main"]["temp_min"].ToString());
-                        float temp_max = float.Parse(obj["main"]["temp_max"].ToString());
-                        double pressure = float.Parse(obj["main"]["pressure"].ToString()) / 1.333;
-                        int humidity = int.Parse(obj["main"]["humidity"].ToString());
-
-                        msg = "Текущая погода в " + name + ", " + country + "\n" +
-                            "Температура: " + Math.Round(temp, 1) + " °С\n" +
-                            "По ощущениям: " + Math.Round(feels_like, 1) + " °С\n" +
-                            "Минимальная: " + Math.Round(temp_min, 1) + " °С\n" +
-                            "Максимальная: " + Math.Round(temp_max, 1) + " °С\n" +
-                            "Давление: " + Math.Round(pressure) + " мм pт. ст.\n" +
-                            "Влажность: " + humidity + " %";
-
-                        if (message.Chat.Type == ChatType.Private)
+                        if (response.StatusCode == HttpStatusCode.NotFound)
                         {
-                            Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg}");
-
-                            await botClient.SendTextMessageAsync(chatId, msg);
-                        }
-                        else
-                        {
-                            Logger.Log.Debug($"/WEATHER SendTextMessage #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
-
-                            await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
-                        }
-                    }
-                    catch (WebException wex)
-                    {
-                        if (wex.Message.Contains("(404) Not Found"))
-                        {
-                            msg = "Город не найден!";
+                            msg = localizer.GetResource("CityNotFound", langCode);
 
                             if (message.Chat.Type == ChatType.Private)
                             {
-                                Logger.Log.Warn($"/WEATHER #chatId={chatId} #msg=Not found", wex);
-
                                 await botClient.SendTextMessageAsync(chatId, msg);
+
+                                Logger.Log.Warn($"{GetType().Name}: Weather API exception #Code={response.StatusCode} #chatId={chatId} #msg={msg}");
                             }
                             else
                             {
-                                Logger.Log.Warn($"/WEATHER #chatId={chatId} #msg=Not found #replyToMessageId={messageId}", wex);
-
                                 await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+
+                                Logger.Log.Warn($"{GetType().Name}: Weather API exception #Code={response.StatusCode} #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
                             }
                         }
                         else
                         {
-                            Logger.Log.Error($"/WEATHER Error in api endpoint", wex);
+                            msg = localizer.GetResource("Error", langCode);
+
+                            if (message.Chat.Type == ChatType.Private)
+                            {
+                                await botClient.SendTextMessageAsync(chatId, msg);
+
+                                Logger.Log.Error($"{GetType().Name}: Weather API exception #Code={response.StatusCode} #chatId={chatId} #msg={msg}");
+                            }
+                            else
+                            {
+                                await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
+
+                                Logger.Log.Error($"{GetType().Name}: Weather API exception #Code={response.StatusCode} #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
+                            }
                         }
+                        return;
+                    }
+
+                    var weatherData = JsonConvert.DeserializeObject<WeatherData>(response.Content);
+
+                    msg = $"{DataDictionary.WeatherIconMapper["informationIcon"]} {localizer.GetResource("CurrentWeatherIn", langCode)} {weatherData.Name}, {weatherData.System.CountryCode}:\n\n" +
+                        $"{DataDictionary.WeatherIconMapper[weatherData.Weather[0].Icon]} {weatherData.Main.Temperature,4:N1}°C\n" +
+                        $"{char.ToUpper(weatherData.Weather[0].Description[0]) + weatherData.Weather[0].Description.Substring(1)}\n" +
+                        $"{DataDictionary.WindDirectionIconMapper[WeatherHelper.ResolveWindDirection(weatherData.Wind.Deg)]} {weatherData.Wind.Speed,4:N1} {localizer.GetResource("WindUnitMetric", langCode)}   {DataDictionary.WeatherIconMapper["pressureIcon"]} {weatherData.Main.Pressure,4} {localizer.GetResource("PressureUnitMetric", langCode)}\n" +
+                        $"{DataDictionary.WeatherIconMapper["humidityIcon"]} {weatherData.Main.Humidity,4}%         {DataDictionary.WeatherIconMapper["cloudinessIcon"]} {weatherData.Clouds.Cloudiness,4}%";
+
+                    if (message.Chat.Type == ChatType.Private)
+                    {
+                        Logger.Log.Debug($"{GetType().Name}: #chatId={chatId} #msg={msg}");
+
+                        await botClient.SendTextMessageAsync(chatId, msg);
+                    }
+                    else
+                    {
+                        Logger.Log.Debug($"{GetType().Name}: #chatId={chatId} #msg={msg} #replyToMessageId={messageId}");
+
+                        await botClient.SendTextMessageAsync(chatId, msg, replyToMessageId: messageId);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"/WEATHER ---", ex);
+                Logger.Log.Error($"{GetType().Name}: {ex.GetType().Name}", ex);
             }
-		}
-	}
+        }
+    }
 }

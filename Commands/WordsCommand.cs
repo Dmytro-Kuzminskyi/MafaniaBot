@@ -8,6 +8,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 using StackExchange.Redis;
+using MafaniaBot.Helpers;
 
 namespace MafaniaBot.Commands
 {
@@ -31,7 +32,7 @@ namespace MafaniaBot.Commands
 			return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
 		}
 
-		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis, IlocalizeService localizer)
 		{
 			try
 			{
@@ -59,7 +60,7 @@ namespace MafaniaBot.Commands
 					return;
 				}
 
-				msg = $"⚔️ {Helper.ConvertTextToHtmlParseMode(firstname)} бросает вызов сыграть в слова ⚔️";
+				msg = $"⚔️ {TextHelper.ConvertTextToHtmlParseMode(firstname)} бросает вызов сыграть в слова ⚔️";
 				var acceptBtn = InlineKeyboardButton.WithCallbackData("⚔️ Принять вызов ⚔️", $"words_game_start&{userId}");
 				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { acceptBtn } });
 				await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyMarkup: keyboard);

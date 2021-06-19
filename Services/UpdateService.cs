@@ -1,56 +1,38 @@
-﻿using System.Collections.Generic;
-using MafaniaBot.Abstractions;
+﻿using MafaniaBot.Abstractions;
+using MafaniaBot.CallbackQueries;
 using MafaniaBot.Commands;
 using MafaniaBot.Handlers;
-using MafaniaBot.CallbackQueries;
-using MafaniaBot.CallbackQueries.AskAnonymous;
 using Telegram.Bot.Types;
 
 namespace MafaniaBot.Services
 {
     public class UpdateService : IUpdateService
     {
-        private readonly List<Command> _commands;
-        private readonly List<Entity<Message>> _handlers;
-        private readonly List<Entity<CallbackQuery>> _callbackQueries;
-
         public UpdateService()
         {
-            _commands = new List<Command>
+            _commands = new Command[]
             {
                 new WordsCommand(),
-                new AskMenuCommand(),
-                new AskCommand(),
                 new WeatherCommand(),
-                new GreetingCommand(),
-                new SetGreetingCommand(),
-                new FarewellCommand(),
-                new SetFarewellCommand(),
-                new HelpCommand(),
-                new StartCommand(),
+                //new HelpCommand(),
+                new StartCommand()
             };
-            _handlers = new List<Entity<Message>>
+            _handlers = new Entity<Message>[]
             {
-                new WordsGameHandler(),
-                new AskAnonymousHandler(),
-                new NewChatMemberHandler(),
-                new LeftChatMemberHandler()
+                new WordsGameHandler()
             };
-            _callbackQueries = new List<Entity<CallbackQuery>>
+            _callbackQueries = new Entity<CallbackQuery>[]
             {
-                new WordsGameStartCallbackQuery(),
-                new AskSelectChatCallbackQuery(),
-                new AskSelectUserCallbackQuery(),
-                new AskCancelCallbackQuery(),
-                new AnswerCancelCallbackQuery(),
-                new AnswerQuestionCallbackQuery(),
-                new AskActivateCallbackQuery(),
-                new AskDeactivateCallbackQuery(),
+                new WordsGameStartCallbackQuery()
             };
         }
 
-        public List<Command> GetCommands() => _commands;
-        public List<Entity<Message>> GetHandlers() => _handlers;
-        public List<Entity<CallbackQuery>> GetCallbackQueries() => _callbackQueries;
+        private readonly Command[] _commands;
+        private readonly Entity<Message>[] _handlers;
+        private readonly Entity<CallbackQuery>[] _callbackQueries;
+
+        public Command[] GetCommands() => _commands;
+        public Entity<Message>[] GetHandlers() => _handlers;
+        public Entity<CallbackQuery>[] GetCallbackQueries() => _callbackQueries;
     }
 }

@@ -1,10 +1,9 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
+using System.Linq;
 
 public static class IEnumerableExtensions
 {
-
     public static T RandomElementByWeight<T>(this IEnumerable<T> sequence, Func<T, float> weightSelector)
     {
         float totalWeight = sequence.Sum(weightSelector);

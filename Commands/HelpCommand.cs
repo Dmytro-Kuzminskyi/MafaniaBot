@@ -25,7 +25,7 @@ namespace MafaniaBot.Commands
             return (message.Text.Equals(Pattern) || message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
         }
 
-        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis, IlocalizeService localizer)
         {
             try
             {

@@ -1,11 +1,11 @@
+using FluentValidation.AspNetCore;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Engines;
 using MafaniaBot.Services;
-using MafaniaBot.Abstractions;
-using Newtonsoft.Json.Serialization;
-using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Serialization;
 using StackExchange.Redis;
 
 namespace MafaniaBot
@@ -13,7 +13,6 @@ namespace MafaniaBot
     public class Startup
     {
         private readonly IConfiguration _configuration;
-
         internal static string REDIS_CONNECTION { get; private set; }
         internal static string BOT_URL { get; private set; }
         internal static string BOT_USERNAME { get; private set; }
@@ -21,7 +20,6 @@ namespace MafaniaBot
         public Startup(IConfiguration configuration)
         {
             _configuration = configuration;
-
             REDIS_CONNECTION = _configuration["Connections:Redis"];
             BOT_URL = _configuration["Bot:Url"];
             BOT_USERNAME = _configuration["Bot:Username"];
@@ -33,7 +31,8 @@ namespace MafaniaBot
 
             services
                 .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))
-                .AddScoped<IUpdateEngine, UpdateEngine>()
+                .AddTransient<IlocalizeService, LocalizeService>()
+                .AddSingleton<IUpdateEngine, UpdateEngine>()
                 .AddSingleton<IUpdateService>(updateService)            
                 .ConfigureBotWebhook(_configuration)
                 .ConfigureBotCommands(_configuration, updateService)
@@ -48,13 +47,12 @@ namespace MafaniaBot
 
         public void Configure(IApplicationBuilder app)
         {
-            app.UseDeveloperExceptionPage();
-            app.UseRouting();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapDefaultControllerRoute();
-            });
+            app
+                .UseRouting()
+                .UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapDefaultControllerRoute();
+                    });
         }
     }
 }

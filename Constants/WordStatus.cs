@@ -1,4 +1,4 @@
-﻿namespace MafaniaBot.Enums
+﻿namespace MafaniaBot.Constants
 {
 	public enum WordStatus
 	{

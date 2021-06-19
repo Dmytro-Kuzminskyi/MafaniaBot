@@ -4,11 +4,12 @@ using System.Text.RegularExpressions;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
 using MafaniaBot.Engines;
-using MafaniaBot.Enums;
+using MafaniaBot.Constants;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using StackExchange.Redis;
+using MafaniaBot.Helpers;
 
 namespace MafaniaBot.Handlers
 {
@@ -29,7 +30,7 @@ namespace MafaniaBot.Handlers
 				return true;
 		}
 
-		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis, IlocalizeService localizer)
 		{
 			try
 			{
@@ -89,7 +90,7 @@ namespace MafaniaBot.Handlers
 						msg = $"{uid} отгадал слово {word.ToLower()}!\n\n";
 					}
 
-					msg += Helper.GenerateWordsGameBoard(game);
+					msg += GameHelper.GenerateWordsGameBoard(game);
 					msg += "Осталось времени: " + game.GetRemainingTime();
 					await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 				}

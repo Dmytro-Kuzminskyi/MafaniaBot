@@ -7,7 +7,7 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using StackExchange.Redis;
-
+using MafaniaBot.Helpers;
 
 namespace MafaniaBot.CallbackQueries
 {
@@ -28,7 +28,7 @@ namespace MafaniaBot.CallbackQueries
 			return callbackQuery.Data.StartsWith("words_game_start&");
 		}
 
-		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		public override async Task Execute(CallbackQuery callbackQuery, ITelegramBotClient botClient, IConnectionMultiplexer redis, IlocalizeService localizer)
 		{
 			try
 			{
@@ -37,7 +37,7 @@ namespace MafaniaBot.CallbackQueries
 				int secondPlayerId = callbackQuery.From.Id;
 				string secondPlayerFirstname = callbackQuery.From.FirstName;
 				string secondPlayerLastName = callbackQuery.From.LastName;
-				string secondPlayerMention = Helper.GenerateMention(secondPlayerId, secondPlayerFirstname, secondPlayerLastName);
+				string secondPlayerMention = TextHelper.GenerateMention(secondPlayerId, secondPlayerFirstname, secondPlayerLastName);
 				string msg;
 
 				Logger.Log.Debug($"Initiated words_game_start& from #chatId={chatId} by #userId={secondPlayerId} with #data={callbackQuery.Data}");
@@ -54,13 +54,13 @@ namespace MafaniaBot.CallbackQueries
 				ChatMember member = await botClient.GetChatMemberAsync(chatId, firstPlayerId);
 				string firstPlayerFirstname = member.User.FirstName;
 				string firstPlayerLastname = member.User.LastName;
-				string firstPlayerMention = Helper.GenerateMention(firstPlayerId, firstPlayerFirstname, firstPlayerLastname);
+				string firstPlayerMention = TextHelper.GenerateMention(firstPlayerId, firstPlayerFirstname, firstPlayerLastname);
 				gameEngine.RegisterGame(new WordsGame(botClient, chatId, new Tuple<int, string>(firstPlayerId, firstPlayerFirstname), 
 					new Tuple<int, string>(secondPlayerId, secondPlayerFirstname)));
 				WordsGame game = gameEngine.FindGameByChatId<WordsGame>(chatId);
 				msg = "Игра началась! У вас есть 3 мин!\n" +
 					$"👈 {firstPlayerMention} ⚔️ {secondPlayerMention} 👉\n\n";
-				msg += Helper.GenerateWordsGameBoard(game);
+				msg += GameHelper.GenerateWordsGameBoard(game);
 				var deleteTask = botClient.DeleteMessageAsync(chatId, messageId);
 				var messageTask = botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
 				await Task.WhenAll(new[] { deleteTask, messageTask });

@@ -9,13 +9,15 @@ namespace MafaniaBot.Engines
 	public class UpdateEngine : IUpdateEngine
 	{
         private readonly IConnectionMultiplexer _connectionMultiplexer;
+		private readonly IlocalizeService _localizeService;
         private readonly ITelegramBotClient _telegramBotClient;
 		private readonly IUpdateService _updateService;
 
-		public UpdateEngine(IConnectionMultiplexer connectionMultiplexer, IUpdateService updateService, ITelegramBotClient telegramBotClient)
+		public UpdateEngine(IConnectionMultiplexer connectionMultiplexer, IlocalizeService localizeService, IUpdateService updateService, ITelegramBotClient telegramBotClient)
 		{
             _connectionMultiplexer = connectionMultiplexer;
-            _telegramBotClient = telegramBotClient;
+			_localizeService = localizeService;
+			_telegramBotClient = telegramBotClient;
 			_updateService = updateService;
 		}
 
@@ -27,7 +29,7 @@ namespace MafaniaBot.Engines
 			{
 				if (command.Contains(message))
 				{
-					await command.Execute(message, _telegramBotClient, _connectionMultiplexer);
+					await command.Execute(message, _telegramBotClient, _connectionMultiplexer, _localizeService);
 					break;
 				}
 			}
@@ -41,7 +43,7 @@ namespace MafaniaBot.Engines
 			{
 				if (handler.Contains(message))
 				{
-					await handler.Execute(message, _telegramBotClient, _connectionMultiplexer);
+					await handler.Execute(message, _telegramBotClient, _connectionMultiplexer, _localizeService);
 					break;
 				}
 			}
@@ -55,7 +57,7 @@ namespace MafaniaBot.Engines
 			{
 				if (cb.Contains(callbackQuery))
 				{
-					await cb.Execute(callbackQuery, _telegramBotClient, _connectionMultiplexer);
+					await cb.Execute(callbackQuery, _telegramBotClient, _connectionMultiplexer, _localizeService);
 					break;
 				}
 			}
