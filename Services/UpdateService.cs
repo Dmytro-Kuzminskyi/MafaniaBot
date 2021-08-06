@@ -1,38 +1,44 @@
-﻿using MafaniaBot.Abstractions;
+﻿using System.Collections.Generic;
+using MafaniaBot.Abstractions;
 using MafaniaBot.CallbackQueries;
 using MafaniaBot.Commands;
 using MafaniaBot.Handlers;
+using MafaniaBot.Models;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Services
 {
     public class UpdateService : IUpdateService
     {
+        private readonly Dictionary<Command, BotCommandScopeType> commands;
+        private readonly IContainable<Message>[] _messageHandlers;
+        private readonly IContainable<CallbackQuery>[] _callbackQueries;
+        private readonly IExecutable _myChatMemberHandler;
+
         public UpdateService()
         {
-            _commands = new Command[]
+            _myChatMemberHandler = new MyChatMemberHandler();
+
+            commands = new Dictionary<Command, BotCommandScopeType>
             {
-                new WordsCommand(),
-                new WeatherCommand(),
-                //new HelpCommand(),
-                new StartCommand()
+                { new ClassicWordsCommand(), BotCommandScopeType.Default },
+                //{ new HelpCommand(), BotCommandScopeType.Default },
+                { new StartCommand(), BotCommandScopeType.Default }
             };
-            _handlers = new Entity<Message>[]
+            _messageHandlers = new IContainable<Message>[]
             {
-                new WordsGameHandler()
+                new GameMessageHandler()
             };
-            _callbackQueries = new Entity<CallbackQuery>[]
+            _callbackQueries = new IContainable<CallbackQuery>[]
             {
-                new WordsGameStartCallbackQuery()
+                new ClassicWordsGameStartCallbackQuery()
             };
         }
 
-        private readonly Command[] _commands;
-        private readonly Entity<Message>[] _handlers;
-        private readonly Entity<CallbackQuery>[] _callbackQueries;
-
-        public Command[] GetCommands() => _commands;
-        public Entity<Message>[] GetHandlers() => _handlers;
-        public Entity<CallbackQuery>[] GetCallbackQueries() => _callbackQueries;
+        public Dictionary<Command, BotCommandScopeType> GetCommands() => commands;
+        public IContainable<Message>[] GetMessageHandlers() => _messageHandlers;
+        public IContainable<CallbackQuery>[] GetCallbackQueries() => _callbackQueries;
+        public IExecutable GetMyChatMemberHandler() => _myChatMemberHandler;
     }
 }

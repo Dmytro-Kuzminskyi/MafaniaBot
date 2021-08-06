@@ -12,8 +12,8 @@ namespace MafaniaBot.Helpers
 		{
 			int i = 0;
 			int k = 0;
-			double div = (double)keyboardData.Count / (double)rowSize;
-			int rows = int.Parse(Math.Ceiling(div).ToString());
+			var div = keyboardData.Count / (double)rowSize;
+			var rows = int.Parse(Math.Ceiling(div).ToString());
 			var keyboardInline = new InlineKeyboardButton[rows][];
 
 			while (i < keyboardData.Count)
@@ -36,10 +36,7 @@ namespace MafaniaBot.Helpers
 							keyboardButtons[m] = keyboardButtonsTemp[m];
 						break;
 					}
-					keyboardButtons[j] = new InlineKeyboardButton
-					{
-						Text = keyboardData[i].Key
-					};
+					keyboardButtons[j] = new InlineKeyboardButton(keyboardData[i].Key);
 					PropertyInfo pi = keyboardButtons[j].GetType().GetProperty(property);
 					pi.SetValue(keyboardButtons[j], keyboardData[i].Value);
 					i++;
@@ -49,16 +46,14 @@ namespace MafaniaBot.Helpers
 			return new InlineKeyboardMarkup(keyboardInline);
 		}
 
-		public static string GenerateMention(int userId, string firstname, string lastname, ParseMode parseMode = ParseMode.Html)
+		public static string GenerateMention(long userId, string firstname, string lastname, ParseMode parseMode = ParseMode.Html)
 		{
 			string mention = null;
 
 			if (parseMode == ParseMode.Html)
 			{
-				mention = lastname != null ?
-						$"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)} " +
-						$"{ConvertTextToHtmlParseMode(lastname)}</a>" :
-						$"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)}</a>";
+				mention = $"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)} " +
+							$"{ConvertTextToHtmlParseMode(lastname)}</a>";
 			}
 
 			return mention;

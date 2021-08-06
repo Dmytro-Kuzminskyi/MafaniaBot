@@ -1,90 +1,49 @@
 ﻿using System;
-using System.Text;
-using System.Net.Http;
-using System.Threading;
-using System.Collections.Generic;
-using Telegram.Bot;
-using Newtonsoft.Json;
-using MafaniaBot.Models;
+using System.Linq;
+using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
+using MafaniaBot.Commands;
+using MafaniaBot.Dictionaries;
+using MafaniaBot.Engines;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot;
 
 namespace MafaniaBot
 {
     public static class BotSetup
     {
-        public static IServiceCollection ConfigureBotWebhook(this IServiceCollection serviceCollection, IConfiguration configuration)
+        public static IServiceCollection ConfigureBot(this IServiceCollection serviceCollection, IConfiguration configuration, IUpdateService updateService)
         {
-            var client = new TelegramBotClient(configuration["Bot:Token"]);
-
+            var botClient = new TelegramBotClient(configuration["Bot:Token"]);
             var webHookUrl = $"{configuration["Host"]}/api/message/update";
 
             try
             {
-                using (var httpClient = new HttpClient())
-                {
-                    httpClient.PostAsync($"https://api.telegram.org/bot" + configuration["Bot:Token"] + "/deleteWebhook",
-                    new FormUrlEncodedContent(new Dictionary<string, string> { { "drop_pending_updates", "true" } })).Wait();
-                }
-            } 
-            catch (HttpRequestException ex) 
-            {
-                Logger.Log.Error("/deleteWebhook error", ex);
-            }
-
-            Thread.Sleep(5_000);
-
-            try
-            { 
-                client.SetWebhookAsync(webHookUrl).Wait(); 
+                botClient.SetWebhookAsync(webHookUrl, dropPendingUpdates: true).Wait();
             }
             catch (Exception ex)
             {
-                Logger.Log.Error("/setupWebhook error", ex);
+                Logger.Log.Error("Set webhook error", ex);
             }
+
+            Parallel.ForEach(BaseDictionary.BotCommandScopeMap.Keys, scope => 
+            {
+                botClient.DeleteMyCommandsAsync(BaseDictionary.BotCommandScopeMap[scope]).Wait();
+            });
+
+            var commands = updateService.GetCommands().Where(e => e.Key.GetType() != typeof(StartCommand));           
+            var scopes = updateService.GetCommands().Values.Distinct();
+
+            foreach (var scope in scopes)
+            {               
+                botClient.SetMyCommandsAsync(commands.Where(e => e.Value == scope).Select(e => e.Key), BaseDictionary.BotCommandScopeMap[scope]).Wait();
+            }
+
+            GameEngine.Initialize(botClient);
 
             return serviceCollection
-                .AddTransient<ITelegramBotClient>(x => client);
-        }
-
-        public static IServiceCollection ConfigureBotCommands(this IServiceCollection serviceCollection, IConfiguration configuration, IUpdateService updateService)
-        {
-            var commands = new List<Command>(updateService.GetCommands());
-
-            Command startCommand = commands.Find(c => c.GetType().Name.Equals("StartCommand"));
-            commands.Remove(startCommand);
-
-            Command[] commandArray = commands.ToArray();
-
-            var botCommands = new List<BotCommand>();
-
-            for (int i = 0; i < commands.Count; i++)
-            {
-                string pattern = commandArray[i].Pattern.Replace("/", "");
-                string description = commandArray[i].Description;
-
-                var botCommand = new BotCommand(pattern, description);
-                botCommands.Add(botCommand);
-            }
-
-            try
-            {
-                using (var httpClient = new HttpClient())
-                {
-                    string jsonString = "{\"commands\":" + JsonConvert.SerializeObject(botCommands) + "}";
-
-                    HttpContent content = new StringContent(jsonString, Encoding.UTF8, "application/json");
-
-                    httpClient.PostAsync($"https://api.telegram.org/bot" + configuration["Bot:Token"] + "/setMyCommands", content).Wait();
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error("/setMyCommand error", ex);
-            }
-
-            return serviceCollection;
+                .AddTransient<ITelegramBotClient>(e => botClient);
         }
     }
 }

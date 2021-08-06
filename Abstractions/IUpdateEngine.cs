@@ -5,8 +5,14 @@ namespace MafaniaBot.Abstractions
 {
 	public interface IUpdateEngine
 	{
-		public Task HandleIncomingMessage(Update update);
-		public Task HandleIncomingEvent(Update update);
-		public Task HandleIncomingCallbackQuery(Update update);
+		bool Supported(Update update);
+
+		Task HandleMessage(Update update);
+
+		Task HandleEvent(Update update);
+
+		Task HandleCallbackQuery(Update update);
+
+		Task HandleMyChatMember(Update update);
 	}
 }

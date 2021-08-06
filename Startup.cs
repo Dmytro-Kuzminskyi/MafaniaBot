@@ -27,16 +27,15 @@ namespace MafaniaBot
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var updateService = new UpdateService();         
+            var updateService = new UpdateService();
 
-            services
+            services               
                 .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))
-                .AddTransient<IlocalizeService, LocalizeService>()
                 .AddSingleton<IUpdateEngine, UpdateEngine>()
-                .AddSingleton<IUpdateService>(updateService)            
-                .ConfigureBotWebhook(_configuration)
-                .ConfigureBotCommands(_configuration, updateService)
-                .AddControllers()
+                .AddSingleton<IUpdateService>(updateService)
+                .ConfigureBot(_configuration, updateService)
+                .AddHostedService<BackgroundWorkerService>()
+                .AddControllers()             
                 .AddNewtonsoftJson(options =>
                     {
                         options.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;

@@ -1,11 +1,18 @@
-﻿using Telegram.Bot.Types;
+﻿using System.Collections.Generic;
+using MafaniaBot.Models;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Abstractions
 {
     public interface IUpdateService
     {
-        Command[] GetCommands();
-        Entity<Message>[] GetHandlers();
-        Entity<CallbackQuery>[] GetCallbackQueries();
+        Dictionary<Command, BotCommandScopeType> GetCommands();
+
+        IContainable<Message>[] GetMessageHandlers();
+
+        IContainable<CallbackQuery>[] GetCallbackQueries();
+
+        IExecutable GetMyChatMemberHandler();
     }
 }
