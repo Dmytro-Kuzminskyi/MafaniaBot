@@ -9,12 +9,22 @@
       "applicationUrl": "http://localhost:5000"
     },
     "Docker": {
-        "commandName": "Docker",
-        "publishAllPorts":  true,
-        "environmentVariables": {
-            "ASPNETCORE_ENVIRONMENT": "Development",
-            "PORT": "5000"
-        }
+      "commandName": "Docker",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "5000"
+      },
+      "publishAllPorts": true
+    },
+    "WSL 2": {
+      "commandName": "WSL2",
+      "launchUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_URLS": "http://localhost:5000",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "5000"
+      },
+      "distributionName": ""
     }
   }
 }

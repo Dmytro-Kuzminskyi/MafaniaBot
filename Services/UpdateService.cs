@@ -1,56 +1,44 @@
 ﻿using System.Collections.Generic;
 using MafaniaBot.Abstractions;
+using MafaniaBot.CallbackQueries;
 using MafaniaBot.Commands;
 using MafaniaBot.Handlers;
-using MafaniaBot.CallbackQueries;
-using MafaniaBot.CallbackQueries.AskAnonymous;
+using MafaniaBot.Models;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Services
 {
     public class UpdateService : IUpdateService
     {
-        private readonly List<Command> _commands;
-        private readonly List<Entity<Message>> _handlers;
-        private readonly List<Entity<CallbackQuery>> _callbackQueries;
+        private readonly Dictionary<Command, BotCommandScopeType> commands;
+        private readonly IContainable<Message>[] _messageHandlers;
+        private readonly IContainable<CallbackQuery>[] _callbackQueries;
+        private readonly IExecutable _myChatMemberHandler;
 
         public UpdateService()
         {
-            _commands = new List<Command>
+            _myChatMemberHandler = new MyChatMemberHandler();
+
+            commands = new Dictionary<Command, BotCommandScopeType>
             {
-                new WordsCommand(),
-                new AskMenuCommand(),
-                new AskCommand(),
-                new WeatherCommand(),
-                new GreetingCommand(),
-                new SetGreetingCommand(),
-                new FarewellCommand(),
-                new SetFarewellCommand(),
-                new HelpCommand(),
-                new StartCommand(),
+                { new ClassicWordsCommand(), BotCommandScopeType.Default },
+                //{ new HelpCommand(), BotCommandScopeType.Default },
+                { new StartCommand(), BotCommandScopeType.Default }
             };
-            _handlers = new List<Entity<Message>>
+            _messageHandlers = new IContainable<Message>[]
             {
-                new WordsGameHandler(),
-                new AskAnonymousHandler(),
-                new NewChatMemberHandler(),
-                new LeftChatMemberHandler()
+                new GameMessageHandler()
             };
-            _callbackQueries = new List<Entity<CallbackQuery>>
+            _callbackQueries = new IContainable<CallbackQuery>[]
             {
-                new WordsGameStartCallbackQuery(),
-                new AskSelectChatCallbackQuery(),
-                new AskSelectUserCallbackQuery(),
-                new AskCancelCallbackQuery(),
-                new AnswerCancelCallbackQuery(),
-                new AnswerQuestionCallbackQuery(),
-                new AskActivateCallbackQuery(),
-                new AskDeactivateCallbackQuery(),
+                new ClassicWordsGameStartCallbackQuery()
             };
         }
 
-        public List<Command> GetCommands() => _commands;
-        public List<Entity<Message>> GetHandlers() => _handlers;
-        public List<Entity<CallbackQuery>> GetCallbackQueries() => _callbackQueries;
+        public Dictionary<Command, BotCommandScopeType> GetCommands() => commands;
+        public IContainable<Message>[] GetMessageHandlers() => _messageHandlers;
+        public IContainable<CallbackQuery>[] GetCallbackQueries() => _callbackQueries;
+        public IExecutable GetMyChatMemberHandler() => _myChatMemberHandler;
     }
 }

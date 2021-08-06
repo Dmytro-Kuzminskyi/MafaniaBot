@@ -1,285 +1,188 @@
 ﻿using System;
-using System.IO;
-using System.Timers;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
-using Telegram.Bot;
-using Telegram.Bot.Types.Enums;
-using MafaniaBot.Engines;
-using MafaniaBot.Enums;
+using System.IO;
+using System.Linq;
+using System.Timers;
+using System.Threading;
+using System.Threading.Tasks;
+using MafaniaBot.Dictionaries;
+using MafaniaBot.Extensions;
+using Timer = System.Timers.Timer;
+
 
 namespace MafaniaBot.Models
 {
-	public class WordsGame
-	{
-		private readonly ITelegramBotClient botClient;
-		private readonly GameEngine gameEngine;
-		private readonly object _lock = new object();
-		private Dictionary<string, float> letters;
-		private Dictionary<int, int> scoreConversion;
-		private List<string> foundWords;
-		private List<string> player_1_field;
-		private List<string> player_2_field;
-		private int player_1_score;
-		private int player_2_score;
-		private DateTime timerInit;
-		private Timer timer;
+    public class WordsGame : Game
+    {
+        private readonly double gameInterval;
+        private ConcurrentBag<string> foundWords;
+        private Timer timer;
+        private DateTime timerInitDate;
 
-		public long ChatId { get; }
+        public WordsGame(long chatId, Player[] players, double gameInterval, int boardWidth, int boardHeight) : base(chatId, players)
+        {
+            GameType = GetType();
+            this.gameInterval = gameInterval;
+            BoardWidth = boardWidth;
+            BoardHeight = boardHeight;
+            foundWords = new ConcurrentBag<string>();
+            List<string> gameField = GenerateGameField(boardWidth, boardHeight);
+            PlayersGameFieldDictionary = new ConcurrentDictionary<long, List<string>>();
+            Parallel.ForEach(players, player => PlayersGameFieldDictionary.TryAdd(player.UserId, gameField));
+            timer = new Timer(gameInterval);
+        }
 
-		public Tuple<int, string> FirstPlayer { get; private set; }
+        public ConcurrentDictionary<long, List<string>> PlayersGameFieldDictionary { get; }
+        public int BoardWidth { get; }
+        public int BoardHeight { get; }
 
-		public List<string> FirstPlayerField { get { return player_1_field; } private set { player_1_field = value; } }
+        public event EventHandler<EventArgs> GamePrepared;
+        public event EventHandler<EventArgs> GameStarted;
+        public event EventHandler<EventArgs> GameEnded;
+        public event EventHandler<GenericEventArgs<long>> GameStopped;
+        public event EventHandler<GenericEventArgs<Guess>> WordFound;
+        public event EventHandler<GenericEventArgs<Guess>> WordExists;
+        public event EventHandler<GenericEventArgs<Guess>> WordNotExist;
 
-		public int FirstPlayerScore { get { return player_1_score; } private set { player_1_score = 0; } }
+        public override void Prepare()
+        {
+            GamePrepared?.Invoke(this, EventArgs.Empty);
+            Thread.Sleep(TimeSpan.FromSeconds(5));
+            Start();
+        }
 
-		public Tuple<int, string> SecondPlayer { get; private set; }
+        public void ForceStop(long userId)
+        {
+            timer.Dispose();
+            gameEngine.RemoveGame(this);
+            GameStopped?.Invoke(this, new GenericEventArgs<long>(userId));
+        }
 
-		public List<string> SecondPlayerField { get { return player_2_field; } private set { player_2_field = value; } }
+        public void ProcessWord(long playerId, string word)
+        {
+            var wordUpper = word.ToUpper();
+            string wordToCheck = "";
 
-		public int SecondPlayerScore { get { return player_2_score; } private set { player_2_score = 0; } }
+            if (foundWords.Contains(wordUpper))
+            {
+                WordFound?.Invoke(this, new GenericEventArgs<Guess>(new Guess(playerId, word)));
+                return;
+            }
 
-		public int X { get; private set; }
+            Player player = Players.Where(e => e.UserId == playerId).First();
+            PlayersGameFieldDictionary.TryGetValue(playerId, out var playerGameField);
+            var tempGameField = new List<string>(playerGameField);
 
-		public int Y { get; private set; }
+            foreach (var ch in wordUpper)
+            {
+                var position = tempGameField.IndexOf(ch.ToString());
 
-		public WordsGame(ITelegramBotClient client, long chatId, Tuple<int, string> firstPlayer, Tuple<int, string> secondPlayer)
-		{
-			gameEngine = GameEngine.Instance;
-			botClient = client;
-			ChatId = chatId;
-			FirstPlayer = firstPlayer;
-			SecondPlayer = secondPlayer;
-			X = 6;
-			Y = 8;
-			InitDictionaries();
-			var gameField = GenerateGameField(X, Y);
-			foundWords = new List<string>();
-			Parallel.Invoke(
-				() => FirstPlayerField = new List<string>(gameField),
-				() => SecondPlayerField = new List<string>(gameField));
-			timer = new Timer(180_000);
-			timer.Start();
-			timerInit = DateTime.Now;
-			timer.Elapsed += Timer_Elapsed;
-		}
+                if (position > -1)
+                {
+                    wordToCheck += tempGameField[position];
+                    tempGameField.RemoveAt(position);
+                    tempGameField.Insert(position, "*");
+                }
+                else
+                {
+                    WordNotExist?.Invoke(this, new GenericEventArgs<Guess>(new Guess(playerId, word)));
+                    return;
+                }
+            }
 
-		private void Timer_Elapsed(object sender, ElapsedEventArgs e)
-		{
-			try
-			{
-				Logger.Log.Info($"Game timer elapsed #chatId={ChatId}");
+            var wordToCheckLower = wordToCheck.ToLower();
 
-				timer.Dispose();
-				gameEngine.RemoveGame(this);
-				string msg = "Игра завершена!\n";
+            if (!CheckWordInDictionary(wordToCheckLower))
+            {
+                WordNotExist?.Invoke(this, new GenericEventArgs<Guess>(new Guess(playerId, word)));
+                return;
+            }
 
-				if (FirstPlayerScore > SecondPlayerScore)
-				{
-					msg += $"🏆 Победитель {Helper.ConvertTextToHtmlParseMode(FirstPlayer.Item2)}! 🏆\n";
-				}
+            player.AddScore(CalculateScore(wordToCheck));
+            PlayersGameFieldDictionary[playerId] = new List<string>(tempGameField);
+            foundWords.Add(wordToCheck);
+            WordExists?.Invoke(this, new GenericEventArgs<Guess>(new Guess(playerId, word)));
+        }
 
-				if (SecondPlayerScore > FirstPlayerScore)
-				{
-					msg += $"🏆 Победитель {Helper.ConvertTextToHtmlParseMode(SecondPlayer.Item2)}! 🏆\n";
-				}
+        public string GenerateWordsGameBoardString(long playerId)
+        {
+            PlayersGameFieldDictionary.TryGetValue(playerId, out var playerGameField);
+            var position = 0;
+            var tempGameField = new List<string>(playerGameField);
+            var output = $"Твой счет: {Players.Where(e => e.UserId == playerId).First().Score}\n\n<pre>";
 
-				if (FirstPlayerScore == SecondPlayerScore)
-				{
-					msg += "🌝 Ничья! 🌚\n";
-				}
+            for (int i = 0; i < BoardHeight; i++)
+            {
+                for (int j = 0; j < BoardWidth; j++)
+                    output += tempGameField[position++] + " ";
 
-				msg += Helper.GenerateWordsGameBoard(this);
-				botClient.SendTextMessageAsync(ChatId, msg, parseMode: ParseMode.Html);
-			}
-			catch (Exception ex)
-			{
-				Logger.Log.Error($"Game timer ERROR #chatId={ChatId}", ex);
-			}
-		}
+                output += "\n";
+            }
 
-		private void InitDictionaries()
-		{
-			letters = new Dictionary<string, float>();
-			#region letters
-			letters.Add("А", 0.0952f);
-			letters.Add("Б", 0.0161f);
-			letters.Add("В", 0.0371f);
-			letters.Add("Г", 0.0149f);
-			letters.Add("Д", 0.0239f);
-			letters.Add("Е", 0.0855f);
-			letters.Add("Ж", 0.0066f);
-			letters.Add("З", 0.0169f);
-			letters.Add("И", 0.0834f);
-			letters.Add("Й", 0.0057f);
-			letters.Add("К", 0.0496f);
-			letters.Add("Л", 0.0431f);
-			letters.Add("М", 0.0246f);
-			letters.Add("Н", 0.0706f);
-			letters.Add("О", 0.0966f);
-			letters.Add("П", 0.0316f);
-			letters.Add("Р", 0.0618f);
-			letters.Add("С", 0.05f);
-			letters.Add("Т", 0.061f);
-			letters.Add("У", 0.0206f);
-			letters.Add("Ф", 0.0068f);
-			letters.Add("Х", 0.0064f);
-			letters.Add("Ц", 0.0125f);
-			letters.Add("Ч", 0.0131f);
-			letters.Add("Ш", 0.008f);
-			letters.Add("Щ", 0.0055f);
-			letters.Add("Ы", 0.0114f);
-			letters.Add("Ь", 0.0209f);
-			letters.Add("Э", 0.0024f);
-			letters.Add("Ю", 0.0027f);
-			letters.Add("Я", 0.0141f);
-			#endregion
-			scoreConversion = new Dictionary<int, int>();
-			#region scoreConversion
-			scoreConversion.Add(2, 1);
-			scoreConversion.Add(3, 2);
-			scoreConversion.Add(4, 4);
-			scoreConversion.Add(5, 5);
-			scoreConversion.Add(6, 7);
-			scoreConversion.Add(7, 8);
-			scoreConversion.Add(8, 10);
-			scoreConversion.Add(9, 11);
-			scoreConversion.Add(10, 13);
-			scoreConversion.Add(11, 14);
-			scoreConversion.Add(12, 16);
-			scoreConversion.Add(13, 17);
-			scoreConversion.Add(14, 18);
-			scoreConversion.Add(15, 20);
-			#endregion
-		}
+            output += "</pre>";
 
-		private List<string> GenerateGameField(int x, int y)
-		{
-			var field = new List<string>();
+            return output;
+        }
 
-			for (int i = 0; i < y; i++)
-			{
-				for (int j = 0; j < x; j++)
-				{
-					field.Add(letters.RandomElementByWeight(e => e.Value).Key);
-				}
-			}
+        public string GetRemainingTimeString()
+        {
+            var secondsDiff = (int)(timerInitDate.AddMilliseconds(gameInterval) - DateTime.Now).TotalSeconds;
+            int minutes = secondsDiff / 60;
+            int seconds = secondsDiff - 60 * minutes;
 
-			return field;
-		}
+            return "Осталось " + (minutes > 0 ? $"{minutes} мин {seconds} сек!" : $"{seconds} сек!");
+        }
 
-		public string GetRemainingTime()
-		{
-			int secondsDiff = (int)(timerInit.AddSeconds(180) - DateTime.Now).TotalSeconds;
-			int minutes = secondsDiff / 60;
-			int seconds = secondsDiff - 60 * minutes;
-			return $"{minutes} мин {seconds} сек!";
-		}
+        private void Start()
+        {
+            timerInitDate = DateTime.Now;
+            timer.Start();
+            timer.Elapsed += TimerElapsedEventRaised;
+            GameStarted?.Invoke(this, EventArgs.Empty);
+        }
 
-		public WordStatus ProcessWord(string word, int userId)
-		{
-			List<string> temp;
-			string wordToCheck = "";
+        private void TimerElapsedEventRaised(object sender, ElapsedEventArgs e)
+        {
+            timer.Dispose();
+            GameEnded?.Invoke(this, EventArgs.Empty);
+            gameEngine.RemoveGame(this);                    
+        }
 
-			lock (_lock)
-			{
-				if (foundWords.Contains(word))
-				{
-					return WordStatus.Found;
-				}
+        private List<string> GenerateGameField(int x, int y)
+        {
+            var gameField = new List<string>();
 
-				if (userId == FirstPlayer.Item1)
-				{
-					temp = new List<string>(player_1_field);
+            for (int i = 0; i < x * y; i++)
+                gameField.Add(GameDictionary.LetterWeights.RandomElementByWeight(e => e.Value).Key);
 
-					foreach (var ch in word)
-					{
-						int pos = temp.IndexOf(ch.ToString());
+            return gameField;
+        }
 
-						if (pos > -1)
-						{
-							wordToCheck += temp[pos];
-							temp.RemoveAt(pos);
-							temp.Insert(pos, "*");
-						}
-						else
-						{
-							return WordStatus.NotExists;
-						}
-					}
+        private bool CheckWordInDictionary(string word)
+        {
+            using (var streamReader = new StreamReader($"data{Path.DirectorySeparatorChar}words.txt"))
+            {
+                string line;
 
-					bool isExists = CheckWordInDictionary(wordToCheck);
+                while ((line = streamReader.ReadLine()) != null)
+                {
+                    if (line == word.ToLower())
+                        return true;
+                }
+            }
 
-					if (!isExists)
-					{
-						return WordStatus.NotExists;
-					}
+            return false;
+        }
 
-					player_1_score += CalculateScore(wordToCheck);
-					player_1_field = new List<string>(temp);
-				}
+        private int CalculateScore(string word)
+        {
+            int wordLength = word.Length;
 
-				if (userId == SecondPlayer.Item1)
-				{
-					temp = new List<string>(player_2_field);
+            if (wordLength > 15)
+                return GameDictionary.ScoreConversion[15];
 
-					foreach (var ch in word)
-					{
-						int pos = temp.IndexOf(ch.ToString());
-
-						if (pos > -1)
-						{
-							wordToCheck += temp[pos];
-							temp.RemoveAt(pos);
-							temp.Insert(pos, "*");
-						}
-						else
-						{
-							return WordStatus.NotExists;
-						}
-					}
-
-					bool isExists = CheckWordInDictionary(wordToCheck);
-
-					if (!isExists)
-					{
-						return WordStatus.NotExists;
-					}
-
-					player_2_score += CalculateScore(wordToCheck);
-					player_2_field = new List<string>(temp);
-				}
-
-				foundWords.Add(wordToCheck);
-				return WordStatus.Exists;
-			}
-		}
-
-		private bool CheckWordInDictionary(string word)
-		{
-			string w = word.ToLower();
-
-			using (var sr = new StreamReader(@"data/words.txt"))
-			{
-				string ln;
-				while ((ln = sr.ReadLine()) != null)
-				{
-					if (ln.Equals(w))
-						return true;
-				}
-			}
-
-			return false;
-		}
-
-		private int CalculateScore(string word)
-		{
-			int length = word.Length;
-
-			if (length > 15)
-				return scoreConversion[15];
-
-			return scoreConversion[length];
-		}
-	}
+            return GameDictionary.ScoreConversion[wordLength];
+        }
+    }
 }

@@ -4,6 +4,6 @@ namespace MafaniaBot.Abstractions
 {
 	public interface IGameEngine
 	{
-		public void RegisterWordsGameInstance(WordsGame game);
+		void RegisterWordsGameInstance(WordsGame game);
 	}
 }

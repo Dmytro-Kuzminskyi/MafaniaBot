@@ -1,85 +1,57 @@
-﻿using System;
-using System.Threading.Tasks;
-using MafaniaBot.Abstractions;
+﻿using System.Threading.Tasks;
+using MafaniaBot.Models;
+using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
-using StackExchange.Redis;
 
 namespace MafaniaBot.Commands
 {
-	public class StartCommand : Command
-	{
-		public override string Pattern { get; }
+    public sealed class StartCommand : Command
+    {
+        public StartCommand()
+        {
+            Command = "/start";
+            Description = "Старт";
+        }
 
-		public override string Description { get; }
+        public override bool Contains(Message message)
+        {
+            return (message.Text == Command ||
+                message.Text == (Command + " &activate") ||
+                message.Text == (Command + Startup.BOT_USERNAME) ||
+                message.Text == (Command + Startup.BOT_USERNAME + " &activate")) &&
+                message.Chat.Type == ChatType.Private;
+        }
 
-		private string PatternAskAnonRegister { get; }
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        {
+            Message message = update.Message;
+            long chatId = message.Chat.Id;
+            long userId = message.From.Id;
+            string firstname = message.From.FirstName;
+            string msg;
 
-		public StartCommand()
-		{
-			Pattern = @"/start";
-			PatternAskAnonRegister = @"/start ask_anon_register";
-			Description = "";
-		}
+            if (update.Message.Text == (Command + " &activate"))
+            {
+                msg = $"Привет, {firstname}!\n" +
+                    $"Теперь ты можешь играть в игры!\n" +
+                    $"Если нуждаешься в помощи по командам — введи /help.";
 
-		public override bool Contains(Message message)
-		{
-			return (message.Text.Equals(Pattern) ||
-				message.Text.Equals(PatternAskAnonRegister) ||
-				message.Text.Equals(Pattern + Startup.BOT_USERNAME)) && !message.From.IsBot;
-		}
+                await botClient.SendTextMessageAsync(chatId, msg);
+            }
+            else
+            {
+                msg = $"Привет, {firstname}!\n" +
+                    $"Если нуждаешься в помощи по командам — введи /help.\n" +
+                    $"👇Играй вместе с друзьями👇";
 
-		public override async Task Execute(Message message, ITelegramBotClient botClient, IConnectionMultiplexer redis)
-		{
-			try
-			{
-				long chatId = message.Chat.Id;
-				int userId = message.From.Id;
-				int messageId = message.MessageId;
-				string firstname = message.From.FirstName;
-				string msg;
+                var addBtn = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + $"?startgroup={userId}&invite");
+                var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { addBtn } });
 
-				Logger.Log.Info($"Initialized /START #chatId={chatId} #userId={userId}");
-
-				if (message.Chat.Type != ChatType.Private)
-				{
-					msg = $"Эта команда доступна только в <a href=\"{Startup.BOT_URL}\">личных сообщениях</a>!";
-					await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, disableWebPagePreview: true, replyToMessageId: messageId);
-					return;
-				}
-				
-				IDatabaseAsync db = redis.GetDatabase();
-				await db.SetAddAsync(new RedisKey("MyChatMembers"), new RedisValue(userId.ToString()));
-		
-				if (message.Text.Equals(PatternAskAnonRegister))
-				{
-					msg = "Теперь вы можете подписаться на анонимные вопросы!";
-					await botClient.SendTextMessageAsync(chatId, msg);
-					return;
-				}
-
-				msg = $"<b>Привет, {Helper.ConvertTextToHtmlParseMode(firstname)}!</b>\n\n" +
-					"<b>Общие команды</b>\n" +
-					"/weather [city] — узнать текущую погоду\n" +
-					"/help — справка по командам\n\n" +
-					"<b>Команды личного чата</b>\n" +
-					"/ask — задать анонимный вопрос\n\n" +
-					"<b>Команды группового чата</b>\n" +
-					"[Creator] /setg — установка приветствия группы\n" +
-					"[Creator] /setf — установка прощания группы\n" +
-					"/greeting — просмотр приветствия группы\n" +
-					"/farewell — просмотр прощания группы\n" +
-					"/askmenu — меню анонимных вопросов\n\n";
-				var buttonAdd = InlineKeyboardButton.WithUrl("Добавить в группу", Startup.BOT_URL + "?startgroup=1");
-				var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { buttonAdd } });
-				await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyMarkup: keyboard);
-			}
-			catch (Exception ex)
-			{
-				Logger.Log.Error("/START ---", ex);
-			}
-		}
-	}
+                await botClient.SendTextMessageAsync(chatId, msg, replyMarkup: keyboard);
+            }
+        }
+    }
 }
