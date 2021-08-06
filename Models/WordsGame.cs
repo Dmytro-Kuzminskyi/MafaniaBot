@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Timers;
 using System.Threading;
 using System.Threading.Tasks;
@@ -161,7 +162,7 @@ namespace MafaniaBot.Models
 
         private bool CheckWordInDictionary(string word)
         {
-            using (var streamReader = new StreamReader($"data{Path.DirectorySeparatorChar}words.txt"))
+            using (var streamReader = new StreamReader($"{Path.GetDirectoryName(Assembly.GetEntryAssembly().Location) + Path.DirectorySeparatorChar}data{Path.DirectorySeparatorChar}words.txt"))
             {
                 string line;
 
