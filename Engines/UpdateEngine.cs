@@ -75,6 +75,11 @@ namespace MafaniaBot.Engines
 			await _updateService.GetMyChatMemberHandler().Execute(update, _telegramBotClient, _connectionMultiplexer);
         }
 
+		/*public async Task HandleChatMember(Update update)
+        {
+
+        }*/
+
 		private void RemovedGameInviteEventRaised(object sender, GenericEventArgs<GameInvite> e)
         {
 			_telegramBotClient.DeleteMessageAsync(e.Value.ChatId, e.Value.MessageId).Wait();
@@ -82,7 +87,7 @@ namespace MafaniaBot.Engines
 
 		private void RegisteredGameInviteEventRaised(object sender, GenericEventArgs<GameInvite> e)
         {
-            var msg = $"⚔️ {TextHelper.ConvertTextToHtmlParseMode(e.Value.Username)} бросает вызов сыграть в {BaseDictionary.GameInviteMessage[e.Value.GameType]} ⚔️";
+            var msg = $"⚔️ {TextFormatter.ConvertTextToHtmlParseMode(e.Value.Username)} бросает вызов сыграть в {BaseDictionary.GameInviteMessage[e.Value.GameType]} ⚔️";
 
             var acceptBtn = InlineKeyboardButton.WithCallbackData("⚔️ Принять вызов ⚔️", $"{BaseDictionary.gameInviteCbQueryData[e.Value.GameType]}{e.Value.UserId}");
             var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { acceptBtn } });

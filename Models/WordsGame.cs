@@ -161,7 +161,9 @@ namespace MafaniaBot.Models
 
         private bool CheckWordInDictionary(string word)
         {
-            using (var streamReader = new StreamReader($"data{Path.DirectorySeparatorChar}words.txt"))
+            var vocabularyPath = Path.Combine("Data", "words.txt");
+
+            using (var streamReader = new StreamReader(vocabularyPath))
             {
                 string line;
 

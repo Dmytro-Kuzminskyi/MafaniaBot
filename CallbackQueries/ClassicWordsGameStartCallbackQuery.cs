@@ -12,6 +12,13 @@ namespace MafaniaBot.CallbackQueries
 {
 	public sealed class ClassicWordsGameStartCallbackQuery : IExecutable, IContainable<CallbackQuery>
 	{
+		private readonly GameEngine gameEngine;
+
+		public ClassicWordsGameStartCallbackQuery()
+        {
+			gameEngine = GameEngine.Instance;
+		}
+
 		public bool Contains(CallbackQuery callbackQuery)
 		{
 			return callbackQuery.Data.StartsWith(BaseDictionary.gameInviteCbQueryData[typeof(ClassicWordsGame)]);
@@ -19,10 +26,8 @@ namespace MafaniaBot.CallbackQueries
 
 		public async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
 		{
-			var gameEngine = GameEngine.Instance;
 			CallbackQuery callbackQuery = update.CallbackQuery;
 			long chatId = callbackQuery.Message.Chat.Id;
-			int messageId = callbackQuery.Message.MessageId;
 			long secondPlayerId = callbackQuery.From.Id;
 			string secondPlayerFirstName = callbackQuery.From.FirstName;
 			string secondPlayerLastName = callbackQuery.From.LastName;

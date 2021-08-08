@@ -10,7 +10,7 @@ COPY . .
 WORKDIR "/src/."
 RUN dotnet build "MafaniaBot.csproj" -c Release -o /app/build
 
-FROM base AS final
+FROM base
 WORKDIR /app
 COPY --from=build /app/build .
 ENTRYPOINT ["dotnet", "MafaniaBot.dll"]

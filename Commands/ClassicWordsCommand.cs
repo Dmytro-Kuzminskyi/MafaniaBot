@@ -11,22 +11,21 @@ namespace MafaniaBot.Commands
 {
     public sealed class ClassicWordsCommand : Command
     {
+        private readonly GameEngine gameEngine;
         public ClassicWordsCommand()
         {
-            Command = @"/classicwords";
-            Description = "Классическая игра в слова";
+            gameEngine = GameEngine.Instance;
+            Command = "/classicwords";
+            Description = "Игра в классические слова";
         }
 
         public override bool Contains(Message message)
         {
-            return (message.Text == Command ||
-                message.Text == (Command + Startup.BOT_USERNAME)) &&
-                message.Chat.Type != ChatType.Private;
+            return message.Text.StartsWith(Command) || message.Text.StartsWith(Command + Startup.BOT_USERNAME);
         }
 
         public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
-            var gameEngine = GameEngine.Instance;
             Message message = update.Message;
             long chatId = message.Chat.Id;
             long userId = message.From.Id;
@@ -34,6 +33,12 @@ namespace MafaniaBot.Commands
             int messageId = message.MessageId;
             DateTime messageDate = message.Date;
             string msg;
+
+            if (message.Chat.Type == ChatType.Private)
+            {
+                await botClient.SendTextMessageAsync(chatId, "Эта команда доступна только в групповом чате.");
+                return;
+            }
 
             try
             {

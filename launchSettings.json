@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "Docker Compose": {
+      "commandName": "DockerCompose",
+      "composeLaunchServiceName": "mafaniabot",
+      "serviceActions": {
+        "mafaniabot": "StartDebugging",
+        "redis": "StartWithoutDebugging"
+      },
+      "composeLaunchAction": "None",
+      "commandVersion": "1.0"
+    }
+  }
+}

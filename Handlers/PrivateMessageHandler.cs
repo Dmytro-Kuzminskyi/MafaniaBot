@@ -11,8 +11,15 @@ using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Handlers
 {
-	public sealed class GameMessageHandler : IExecutable, IContainable<Message>
+	public sealed class PrivateMessageHandler : IExecutable, IContainable<Message>
 	{
+		private readonly GameEngine gameEngine;
+
+		public PrivateMessageHandler()
+        {
+			gameEngine = GameEngine.Instance;
+		}
+
 		public bool Contains(Message message)
 		{
 			return message.Chat.Type == ChatType.Private;
@@ -20,7 +27,6 @@ namespace MafaniaBot.Handlers
 
 		public Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
 		{
-			var gameEngine = GameEngine.Instance;
 			Message message = update.Message;
 			long userId = message.From.Id;
 			string word;

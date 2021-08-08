@@ -10,18 +10,18 @@ namespace MafaniaBot.Commands
     {
         public HelpCommand()
         {
-            Command = @"/help";
+            Command = "/help";
             Description = "Помощь по командам";
         }
 
         public override bool Contains(Message message)
         {
-            return message.Text == Command || message.Text == (Command + Startup.BOT_USERNAME);
+            return message.Text.StartsWith(Command) || message.Text.StartsWith(Command + Startup.BOT_USERNAME);
         }
 
         public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
-            Message message = update.Message;
+            Message message = update.Message;            
         }
     }
 }

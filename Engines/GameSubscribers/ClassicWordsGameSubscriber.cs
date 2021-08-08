@@ -46,8 +46,8 @@ namespace MafaniaBot.Engines.GameSubscribers
 
             var firstPlayer = gameSender.Players[0];
             var secondPlayer = gameSender.Players[1];
-            var firstPlayerMention = TextHelper.GenerateMention(firstPlayer.UserId, firstPlayer.FirstName, firstPlayer.LastName);
-            var secondPlayerMention = TextHelper.GenerateMention(secondPlayer.UserId, secondPlayer.FirstName, secondPlayer.LastName);
+            var firstPlayerMention = TextFormatter.GenerateMention(firstPlayer.UserId, firstPlayer.FirstName, firstPlayer.LastName);
+            var secondPlayerMention = TextFormatter.GenerateMention(secondPlayer.UserId, secondPlayer.FirstName, secondPlayer.LastName);
 
             var linkBtn = InlineKeyboardButton.WithUrl("Перейти к игре", Startup.BOT_URL);
             var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { linkBtn } });
@@ -65,8 +65,8 @@ namespace MafaniaBot.Engines.GameSubscribers
             var secondPlayer = gameSender.Players[1];
             
             var groupMsg = $"<b>Игра в классические слова</b>\n" +
-                    $"Счет {TextHelper.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: 0\n" +
-                    $"Счет {TextHelper.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: 0\n" +
+                    $"Счет {TextFormatter.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: 0\n" +
+                    $"Счет {TextFormatter.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: 0\n" +
                     gameSender.GetRemainingTimeString();
 
             var linkBtn = InlineKeyboardButton.WithUrl("Перейти к игре", Startup.BOT_URL);
@@ -103,9 +103,9 @@ namespace MafaniaBot.Engines.GameSubscribers
             var initiator = gameSender.Players.Where(x => x.UserId == e.Value);
             var winner = gameSender.Players.Except(initiator).First();
             var commonMsg = "<b>Игра в классические слова завершена!</b>\n";
-            var commonBlockMsg = $"{TextHelper.ConvertTextToHtmlParseMode(initiator.First().FirstName)} заблокировал(а) меня ☹️";
+            var commonBlockMsg = $"{TextFormatter.ConvertTextToHtmlParseMode(initiator.First().FirstName)} заблокировал(а) меня ☹️";
             var groupMsg = commonMsg +
-                            $"🏆 Победитель {TextHelper.ConvertTextToHtmlParseMode(winner.FirstName)} 🏆\n" +
+                            $"🏆 Победитель {TextFormatter.ConvertTextToHtmlParseMode(winner.FirstName)} 🏆\n" +
                             commonBlockMsg;
 
             var privateMsg = commonMsg + "🏆 Ты победил(а) 🏆\n" + commonBlockMsg;
@@ -131,14 +131,14 @@ namespace MafaniaBot.Engines.GameSubscribers
 
             if (firstPlayer.Score > secondPlayer.Score)
             {
-                groupMsg += $"🏆 Победитель {TextHelper.ConvertTextToHtmlParseMode(firstPlayer.FirstName)} 🏆\n";
+                groupMsg += $"🏆 Победитель {TextFormatter.ConvertTextToHtmlParseMode(firstPlayer.FirstName)} 🏆\n";
                 privateMsgFirstPlayer += "🏆 Ты победил(а) 🏆";
                 privateMsgSecondPlayer += "Ты проиграл(а)";
             }
 
             if (firstPlayer.Score < secondPlayer.Score)
             {
-                groupMsg += $"🏆 Победитель {TextHelper.ConvertTextToHtmlParseMode(secondPlayer.FirstName)} 🏆\n";
+                groupMsg += $"🏆 Победитель {TextFormatter.ConvertTextToHtmlParseMode(secondPlayer.FirstName)} 🏆\n";
                 privateMsgFirstPlayer += "Ты проиграл(а)";
                 privateMsgSecondPlayer += "🏆 Ты победил(а) 🏆";
             }
@@ -152,8 +152,8 @@ namespace MafaniaBot.Engines.GameSubscribers
                 privateMsgSecondPlayer += evenMsg;
             }
 
-            groupMsg += $"Счет {TextHelper.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: {firstPlayer.Score}\n" +
-                $"Счет {TextHelper.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: {secondPlayer.Score}";
+            groupMsg += $"Счет {TextFormatter.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: {firstPlayer.Score}\n" +
+                $"Счет {TextFormatter.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: {secondPlayer.Score}";
 
             var groupChatDeleteTask = _botClient.DeleteMessageAsync(gameSender.ChatId, gameSender.GameResultsMessageId);
             var groupChatTask = _botClient.SendTextMessageAsync(gameSender.ChatId, groupMsg, parseMode: ParseMode.Html);
@@ -186,8 +186,8 @@ namespace MafaniaBot.Engines.GameSubscribers
             var secondPlayer = gameSender.Players[1];
 
             var groupMsg = $"<b>Игра в классические слова</b>\n" +
-                            $"Счет {TextHelper.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: {firstPlayer.Score}\n" +
-                            $"Счет {TextHelper.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: {secondPlayer.Score}\n" +
+                            $"Счет {TextFormatter.ConvertTextToHtmlParseMode(firstPlayer.FirstName)}: {firstPlayer.Score}\n" +
+                            $"Счет {TextFormatter.ConvertTextToHtmlParseMode(secondPlayer.FirstName)}: {secondPlayer.Score}\n" +
                             remainingTimeMsg;
 
             var privateChatTask = _botClient.SendTextMessageAsync(e.Value.UserId, privateMsg, parseMode: ParseMode.Html);

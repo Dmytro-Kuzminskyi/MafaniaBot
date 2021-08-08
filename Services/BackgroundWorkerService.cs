@@ -1,5 +1,4 @@
-﻿using System;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 using MafaniaBot.BackgroundJobs;
 using Microsoft.Extensions.Configuration;

@@ -23,12 +23,17 @@ namespace MafaniaBot.Services
             commands = new Dictionary<Command, BotCommandScopeType>
             {
                 { new ClassicWordsCommand(), BotCommandScopeType.Default },
+                { new TitlesCommand(), BotCommandScopeType.Default },
+                { new TitleCommand(), BotCommandScopeType.Default },               
                 //{ new HelpCommand(), BotCommandScopeType.Default },
                 { new StartCommand(), BotCommandScopeType.Default }
             };
             _messageHandlers = new IContainable<Message>[]
             {
-                new GameMessageHandler()
+                new PrivateMessageHandler(),
+                new GroupMessageHandler(),
+                new NewChatMemberHandler(),
+                new LeftChatMemberHandler()
             };
             _callbackQueries = new IContainable<CallbackQuery>[]
             {

@@ -10,7 +10,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Handlers
 {
-    public class MyChatMemberHandler : IExecutable
+    public sealed class MyChatMemberHandler : IExecutable
     {
         public async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {

@@ -1,5 +1,7 @@
-using FluentValidation.AspNetCore;
+using System.Linq;
 using MafaniaBot.Abstractions;
+using MafaniaBot.Commands;
+using MafaniaBot.Dictionaries;
 using MafaniaBot.Engines;
 using MafaniaBot.Services;
 using Microsoft.AspNetCore.Builder;
@@ -7,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Serialization;
 using StackExchange.Redis;
+using Telegram.Bot;
 
 namespace MafaniaBot
 {
@@ -27,25 +30,30 @@ namespace MafaniaBot
 
         public void ConfigureServices(IServiceCollection services)
         {
-            var updateService = new UpdateService();
-
-            services               
-                .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))
+            services
+                .ConfigureBot(_configuration)
+                .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))        
+                .AddSingleton<IUpdateService, UpdateService>()
                 .AddSingleton<IUpdateEngine, UpdateEngine>()
-                .AddSingleton<IUpdateService>(updateService)
-                .ConfigureBot(_configuration, updateService)
                 .AddHostedService<BackgroundWorkerService>()
-                .AddControllers()             
+                .AddControllers()
                 .AddNewtonsoftJson(options =>
                     {
                         options.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
                         options.SerializerSettings.ContractResolver = new DefaultContractResolver();
-                    })
-                .AddFluentValidation();
+                    });
         }
 
-        public void Configure(IApplicationBuilder app)
+        public void Configure(IApplicationBuilder app, ITelegramBotClient botClient, IUpdateService updateService)
         {
+            var commands = updateService.GetCommands().Where(e => e.Key.GetType() != typeof(StartCommand));
+            var scopes = updateService.GetCommands().Values.Distinct();
+
+            foreach (var scope in scopes)
+            {
+                botClient.SetMyCommandsAsync(commands.Where(e => e.Value == scope).Select(e => e.Key), BaseDictionary.BotCommandScopeMap[scope]).Wait();
+            }
+
             app
                 .UseRouting()
                 .UseEndpoints(endpoints =>

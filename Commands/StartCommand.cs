@@ -18,11 +18,11 @@ namespace MafaniaBot.Commands
 
         public override bool Contains(Message message)
         {
-            return (message.Text == Command ||
-                message.Text == (Command + " &activate") ||
-                message.Text == (Command + Startup.BOT_USERNAME) ||
-                message.Text == (Command + Startup.BOT_USERNAME + " &activate")) &&
-                message.Chat.Type == ChatType.Private;
+            return (message.Text.StartsWith(Command) ||
+                    message.Text.StartsWith(Command + " &activate") ||
+                    message.Text.StartsWith(Command + Startup.BOT_USERNAME) ||
+                    message.Text.StartsWith(Command + Startup.BOT_USERNAME + " &activate")) &&
+                    message.Chat.Type == ChatType.Private;
         }
 
         public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
@@ -33,7 +33,7 @@ namespace MafaniaBot.Commands
             string firstname = message.From.FirstName;
             string msg;
 
-            if (update.Message.Text == (Command + " &activate"))
+            if (update.Message.Text.StartsWith(Command + " &activate"))
             {
                 msg = $"Привет, {firstname}!\n" +
                     $"Теперь ты можешь играть в игры!\n" +
