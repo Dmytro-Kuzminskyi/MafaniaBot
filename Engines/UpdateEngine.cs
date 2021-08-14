@@ -1,6 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Dictionaries;
+using MafaniaBot.Engines.UpdateResolvers;
 using MafaniaBot.Helpers;
 using MafaniaBot.Models;
 using StackExchange.Redis;
@@ -13,72 +17,37 @@ namespace MafaniaBot.Engines
 {
 	public class UpdateEngine : IUpdateEngine
 	{
-        private readonly IConnectionMultiplexer _connectionMultiplexer;
-        private readonly ITelegramBotClient _telegramBotClient;
-		private readonly IUpdateService _updateService;
+		private static readonly IReadOnlyDictionary<UpdateType, Func<IUpdateResolver>> UpdateResolvers = new ReadOnlyDictionary<UpdateType, Func<IUpdateResolver>>(new Dictionary<UpdateType, Func<IUpdateResolver>> 
+		{
+			{ UpdateType.MyChatMember, () => new MyChatMemberResolver() },
+			{ UpdateType.CallbackQuery, () => new CallbackQueryResolver() },
+			{ UpdateType.Message, () => new MessageResolver() }
+		});
+		private readonly IConnectionMultiplexer _connectionMultiplexer;
+        private readonly ITelegramBotClient _telegramBotClient;	
 
-		public UpdateEngine(IConnectionMultiplexer connectionMultiplexer, IUpdateService updateService, ITelegramBotClient telegramBotClient)
+		public UpdateEngine(ITelegramBotClient telegramBotClient, IConnectionMultiplexer connectionMultiplexer)
 		{
             _connectionMultiplexer = connectionMultiplexer;
 			_telegramBotClient = telegramBotClient;
-			_updateService = updateService;
 			GameEngine.Instance.RemovedGameInvite += RemovedGameInviteEventRaised;
 			GameEngine.Instance.RegisteredGameInvite += RegisteredGameInviteEventRaised;
 		}
 
-		public bool Supported(Update update)
+		public async Task ProcessUpdate(Update update)
         {
-			return !(update.Message?.From?.IsBot ?? false) && 
-				update.Message?.Chat.Type != ChatType.Channel &&
-				update.Message?.Chat.Type != ChatType.Sender &&
-				!(update.MyChatMember?.From.IsBot ?? false);
-		}
+			var updateType = update.Type;
 
-		public async Task HandleMessage(Update update)
-		{
-			foreach (var command in _updateService.GetCommands().Keys)
-			{
-				if (command.Contains(update.Message))
-				{
-					await command.Execute(update, _telegramBotClient, _connectionMultiplexer);
-					break;
-				}
-			}
-		}
-		
-		public async Task HandleEvent(Update update)
-		{
-			foreach (IContainable<Message> _handler in _updateService.GetMessageHandlers())
-			{
-				if (_handler.Contains(update.Message))
-				{
-					await ((IExecutable)_handler).Execute(update, _telegramBotClient, _connectionMultiplexer);
-					break;
-				}
-			}
-		}
-		
-		public async Task HandleCallbackQuery(Update update)
-		{
-			foreach (IContainable<CallbackQuery> _callbackQuery in _updateService.GetCallbackQueries())
-			{
-				if (_callbackQuery.Contains(update.CallbackQuery))
-				{
-					await ((IExecutable)_callbackQuery).Execute(update, _telegramBotClient, _connectionMultiplexer);
-					break;
-				}
-			}
-		}
+			if (!UpdateResolvers.ContainsKey(updateType))
+				return;
 
-		public async Task HandleMyChatMember(Update update)
-        {
-			await _updateService.GetMyChatMemberHandler().Execute(update, _telegramBotClient, _connectionMultiplexer);
-        }
+			var resolver = UpdateResolvers[updateType]();
 
-		/*public async Task HandleChatMember(Update update)
-        {
+			if (!resolver.Supported(update))
+				return;
 
-        }*/
+			await resolver.Resolve(update, _telegramBotClient, _connectionMultiplexer);
+		}
 
 		private void RemovedGameInviteEventRaised(object sender, GenericEventArgs<GameInvite> e)
         {
@@ -96,5 +65,5 @@ namespace MafaniaBot.Engines
 
 			e.Value.MessageId = botMessageId;
 		}
-	}
+    }
 }

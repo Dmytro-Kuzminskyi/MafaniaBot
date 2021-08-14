@@ -4,14 +4,15 @@ namespace MafaniaBot.Helpers
 {
 	public static class TextFormatter
 	{
-		public static string GenerateMention(long userId, string firstname, string lastname, ParseMode parseMode = ParseMode.Html)
+		public static string GenerateMention(long userId, string firstname, string lastname = null, ParseMode parseMode = ParseMode.Html)
 		{
 			string mention = null;
 
 			if (parseMode == ParseMode.Html)
 			{
-				mention = $"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(firstname)} " +
-							$"{ConvertTextToHtmlParseMode(lastname)}</a>";
+				var userNameString = lastname != null ? $"{firstname} {lastname}" : $"{firstname}";
+
+				mention = $"<a href=\"tg://user?id={userId}\">{ConvertTextToHtmlParseMode(userNameString)}</a>";
 			}
 
 			return mention;
@@ -19,11 +20,15 @@ namespace MafaniaBot.Helpers
 
 		public static string ConvertTextToHtmlParseMode(string text)
 		{
-			text = text.Replace("<", "");
-			text = text.Replace(">", "");
-			text = text.Replace("&", "&amp;");
+			if (text != null)
+			{
+				text = text.Replace("<", "");
+				text = text.Replace(">", "");
+				text = text.Replace("&", "&amp;");
+				return text;
+			}
 
-			return text;
+			return default;
 		}
 	}
 }

@@ -26,5 +26,13 @@ namespace MafaniaBot.Dictionaries
             { BotCommandScopeType.AllGroupChats, BotCommandScope.AllGroupChats() },
             { BotCommandScopeType.AllChatAdministrators, BotCommandScope.AllChatAdministrators() },
         });
+
+        public static readonly List<string> Icons = new List<string> 
+        {
+            "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐓", "🐧", "🦆", "🦅",
+            "🦉", "🦇", "🐺", "🐗", "🐴", "🐝", "🐛", "🦋", "🐌", "🐞", "🐜", "🦟", "🦗", "🕷", "🦂", "🐢", "🐍", "🦎", "🐙",
+            "🦑", "🦐", "🦞", "🦀", "🐡", "🐠", "🐟", "🐬", "🐳", "🐋", "🦈", "🐊", "🐅", "🐆", "🦓", "🦍", "🦧", "🐘", "🦛",
+            "🦏", "🐫", "🦒", "🦘", "🐃", "🐂", "🐄", "🐏", "🦜", "🦩", "🦨", "🐿", "🦔"
+        };
     }
 }

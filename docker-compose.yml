@@ -2,6 +2,7 @@ version: '3.9'
 
 services:
   mafaniabot:
+    container_name: mafaniabot-dev
     image: mafaniabot
     build:
       context: .
@@ -13,5 +14,10 @@ services:
       - "5000:5000"
     links:
       - redis
+
   redis:
+    container_name: redis-dev
     image: redis
+    command: redis-server --appendonly yes
+    volumes:
+    - ./redisdata:/data

@@ -1,4 +1,6 @@
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
 using MafaniaBot.Commands;
 using MafaniaBot.Dictionaries;
@@ -33,7 +35,6 @@ namespace MafaniaBot
             services
                 .ConfigureBot(_configuration)
                 .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))        
-                .AddSingleton<IUpdateService, UpdateService>()
                 .AddSingleton<IUpdateEngine, UpdateEngine>()
                 .AddHostedService<BackgroundWorkerService>()
                 .AddControllers()
@@ -44,15 +45,18 @@ namespace MafaniaBot
                     });
         }
 
-        public void Configure(IApplicationBuilder app, ITelegramBotClient botClient, IUpdateService updateService)
+        public void Configure(IApplicationBuilder app, ITelegramBotClient botClient, IConnectionMultiplexer redis)
         {
-            var commands = updateService.GetCommands().Where(e => e.Key.GetType() != typeof(StartCommand));
-            var scopes = updateService.GetCommands().Values.Distinct();
+            var updateService = UpdateService.Instance;
+            var commands = updateService.Commands.Where(e => e.Key.GetType() != typeof(StartCommand));
+            var scopes = updateService.Commands.Values.Distinct();
 
             foreach (var scope in scopes)
             {
                 botClient.SetMyCommandsAsync(commands.Where(e => e.Value == scope).Select(e => e.Key), BaseDictionary.BotCommandScopeMap[scope]).Wait();
             }
+
+            SyncronizeRedisData(botClient, redis);
 
             app
                 .UseRouting()
@@ -60,6 +64,33 @@ namespace MafaniaBot
                     {
                         endpoints.MapDefaultControllerRoute();
                     });
+        }
+
+        private void SyncronizeRedisData(ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        {
+            try
+            {
+                IDatabase db = redis.GetDatabase();
+
+                var chatIds = db.SetMembers("MyGroups").Select(e => long.Parse(e)).ToArray();
+
+                Parallel.ForEach(chatIds, chatId =>
+                {
+                    var userIds = db.SetMembers($"ChatMembers:{chatId}").Select(e => long.Parse(e)).ToArray();
+
+                    foreach (var userId in userIds)
+                    {
+                        var chatMember = botClient.GetChatMemberAsync(chatId, userId).GetAwaiter().GetResult();
+
+                        if (chatMember == null)
+                            db.SetRemove(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(userId.ToString()));
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+            }
         }
     }
 }

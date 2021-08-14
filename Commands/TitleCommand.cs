@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MafaniaBot.Helpers;
@@ -20,7 +22,10 @@ namespace MafaniaBot.Commands
 
         public override bool Contains(Message message)
         {
-            return message.Text.StartsWith(Command) || message.Text.StartsWith(Command + Startup.BOT_USERNAME);                
+            return (message.Text.Contains(Command) && 
+                    message.Entities.Where(e => e.Offset == 0 && e.Length == Command.Length).Any()) || 
+                    (message.Text.Contains($"{Command}@{Startup.BOT_USERNAME}") &&
+                    message.Entities.Where(e => e.Offset == 0 && e.Length == $"{Command}@{Startup.BOT_USERNAME}".Length).Any());
         }
 
         public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
@@ -37,9 +42,11 @@ namespace MafaniaBot.Commands
             }
 
             var text = message.Text;
-            var isShortCommand = !text.Contains(Command + Startup.BOT_USERNAME);
+            var isShortCommand = !text.Contains($"{Command}@{Startup.BOT_USERNAME}");
             var title = isShortCommand ? text.Replace(Command, string.Empty).Trim()
-                                        : text.Replace(Command + Startup.BOT_USERNAME, string.Empty).Trim();
+                                        : text.Replace($"{Command}@{Startup.BOT_USERNAME}", string.Empty).Trim();
+
+            title = string.Join(string.Empty, Regex.Split(title, "[^a-zA-Zа-яА-Яё\\s]+"));
 
             if (title.Length == 0)
             {
@@ -59,16 +66,23 @@ namespace MafaniaBot.Commands
                     var time = valueWithExpiry.Expiry;
                     var minutes = time?.Minutes;
                     var seconds = time?.Seconds;
-                    msg = $"Следующее звание можно будет выбрать через ";
+                    msg = $"Следующее звание можно будет выбрать через";
 
-                    if (minutes > 0)
+                    if (minutes == 0 && seconds == 0)
                     {
-                        msg += $"{minutes} мин"; 
+                        msg += " 1 сек";
                     }
-
-                    if (seconds > 0)
+                    else
                     {
-                        msg += $" {seconds} сек";
+                        if (minutes > 0)
+                        {
+                            msg += $" {minutes} мин";
+                        }
+
+                        if (seconds > 0)
+                        {
+                            msg += $" {seconds} сек";
+                        }
                     }
 
                     msg += "!";
@@ -119,9 +133,11 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                await db.ListLeftPushAsync(new RedisKey($"Titles:{chatId}"), new RedisValue($"{userMention} - {title}"));
-                await db.ListTrimAsync(new RedisKey($"Titles:{chatId}"), 0, 9);
-                await db.StringSetAsync(new RedisKey($"LastTitle:{chatId}"), new RedisValue(title), TimeSpan.FromHours(1));
+                var listLeftPushTask = db.ListLeftPushAsync(new RedisKey($"Titles:{chatId}"), new RedisValue($"{userMention} - {title}"));
+                var listTrimTask = db.ListTrimAsync(new RedisKey($"Titles:{chatId}"), 0, 9);
+                var stringSetTask = db.StringSetAsync(new RedisKey($"LastTitle:{chatId}"), new RedisValue(title), TimeSpan.FromHours(1));
+
+                await Task.WhenAll(new Task[] { listLeftPushTask, listTrimTask, stringSetTask });
             }
             catch (Exception ex)
             {

@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
@@ -18,11 +19,13 @@ namespace MafaniaBot.Commands
 
         public override bool Contains(Message message)
         {
-            return (message.Text.StartsWith(Command) ||
-                    message.Text.StartsWith(Command + " &activate") ||
-                    message.Text.StartsWith(Command + Startup.BOT_USERNAME) ||
-                    message.Text.StartsWith(Command + Startup.BOT_USERNAME + " &activate")) &&
-                    message.Chat.Type == ChatType.Private;
+            return message.Chat.Type == ChatType.Private &&
+                    (message.Text.Contains(Command) ||
+                    message.Text.Contains($"{Command} &activate")) &&
+                    message.Entities.Where(e => e.Offset == 0 && e.Length == Command.Length).Any() ||
+                    (message.Text.Contains($"{Command}@{Startup.BOT_USERNAME}") ||
+                    message.Text.Contains($"{Command}@{Startup.BOT_USERNAME} &activate")) &&
+                    message.Entities.Where(e => e.Offset == 0 && e.Length == $"{Command}@{Startup.BOT_USERNAME}".Length).Any();
         }
 
         public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
@@ -33,7 +36,7 @@ namespace MafaniaBot.Commands
             string firstname = message.From.FirstName;
             string msg;
 
-            if (update.Message.Text.StartsWith(Command + " &activate"))
+            if (message.Text.Contains($"{Command} &activate") || message.Text.Contains($"{Command}@{Startup.BOT_USERNAME} &activate"))
             {
                 msg = $"Привет, {firstname}!\n" +
                     $"Теперь ты можешь играть в игры!\n" +

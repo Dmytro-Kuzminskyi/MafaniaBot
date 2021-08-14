@@ -1,49 +1,66 @@
 ﻿using System.Collections.Generic;
-using MafaniaBot.Abstractions;
-using MafaniaBot.CallbackQueries;
 using MafaniaBot.Commands;
-using MafaniaBot.Handlers;
+using MafaniaBot.Handlers.CallbackQueryHandlers;
+using MafaniaBot.Handlers.MessageHandlers;
+using MafaniaBot.Handlers.MyChatMemberHandlers;
 using MafaniaBot.Models;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Services
 {
-    public class UpdateService : IUpdateService
-    {
+    public sealed class UpdateService
+    {      
+        private static readonly object instanceLock = new object();
         private readonly Dictionary<Command, BotCommandScopeType> commands;
-        private readonly IContainable<Message>[] _messageHandlers;
-        private readonly IContainable<CallbackQuery>[] _callbackQueries;
-        private readonly IExecutable _myChatMemberHandler;
+        private readonly Handler<Message>[] _messageHandlers;
+        private readonly Handler<CallbackQuery>[] _callbackQueryHandlers;
+        private readonly Handler<ChatMemberUpdated>[] _myChatMemberHandlers;
+        private static UpdateService instance = null;
 
-        public UpdateService()
-        {
-            _myChatMemberHandler = new MyChatMemberHandler();
-
+        private UpdateService()
+        {            
             commands = new Dictionary<Command, BotCommandScopeType>
             {
                 { new ClassicWordsCommand(), BotCommandScopeType.Default },
+                { new BananaCommand(), BotCommandScopeType.Default },                
+                { new TitleCommand(), BotCommandScopeType.Default },
+                { new CallCommand(), BotCommandScopeType.Default },
                 { new TitlesCommand(), BotCommandScopeType.Default },
-                { new TitleCommand(), BotCommandScopeType.Default },               
+                { new TopBananaCommand(), BotCommandScopeType.Default },
+                { new ChangeIconCommand(), BotCommandScopeType.Default },
                 //{ new HelpCommand(), BotCommandScopeType.Default },
                 { new StartCommand(), BotCommandScopeType.Default }
             };
-            _messageHandlers = new IContainable<Message>[]
+            _messageHandlers = new Handler<Message>[]
             {
-                new PrivateMessageHandler(),
                 new GroupMessageHandler(),
+                new PrivateMessageHandler(),
                 new NewChatMemberHandler(),
                 new LeftChatMemberHandler()
-            };
-            _callbackQueries = new IContainable<CallbackQuery>[]
+            };          
+            _callbackQueryHandlers = new Handler<CallbackQuery>[]
             {
-                new ClassicWordsGameStartCallbackQuery()
+                new ClassicWordsGameStartCallbackQueryHandler()
+            };
+            _myChatMemberHandlers = new Handler<ChatMemberUpdated>[]
+            {
+                new MyChatMemberPrivateHandler(),
+                new MyChatMemberGroupHandler()
             };
         }
 
-        public Dictionary<Command, BotCommandScopeType> GetCommands() => commands;
-        public IContainable<Message>[] GetMessageHandlers() => _messageHandlers;
-        public IContainable<CallbackQuery>[] GetCallbackQueries() => _callbackQueries;
-        public IExecutable GetMyChatMemberHandler() => _myChatMemberHandler;
+        public static UpdateService Instance
+        {
+            get
+            {
+                lock (instanceLock) return instance ?? new UpdateService();
+            }
+        }
+
+        public Dictionary<Command, BotCommandScopeType> Commands => commands;
+        public Handler<Message>[] MessageHandlers => _messageHandlers;
+        public Handler<CallbackQuery>[] CallbackQueryHandlers => _callbackQueryHandlers;
+        public Handler<ChatMemberUpdated>[] MyChatMemberHandlers => _myChatMemberHandlers;
     }
 }

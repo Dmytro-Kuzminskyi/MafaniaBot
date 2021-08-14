@@ -6,9 +6,9 @@ using Telegram.Bot.Types;
 
 namespace MafaniaBot.Models
 {
-    public abstract class Command : BotCommand, IExecutable, IContainable<Message>
+    public abstract class Handler<T> : IExecutable, IContainable<T>  where T : class
     {
-        public abstract bool Contains(Message update);
+        public abstract bool Contains(T update);
         public abstract Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis);
     }
 }

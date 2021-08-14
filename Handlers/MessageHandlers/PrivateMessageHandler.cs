@@ -1,7 +1,6 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using MafaniaBot.Abstractions;
 using MafaniaBot.Engines;
 using MafaniaBot.Models;
 using StackExchange.Redis;
@@ -9,9 +8,12 @@ using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace MafaniaBot.Handlers
+namespace MafaniaBot.Handlers.MessageHandlers
 {
-	public sealed class PrivateMessageHandler : IExecutable, IContainable<Message>
+	/// <summary>
+	/// Triggered when user sends message to chat with bot
+	/// </summary>
+	public sealed class PrivateMessageHandler : Handler<Message>
 	{
 		private readonly GameEngine gameEngine;
 
@@ -20,12 +22,12 @@ namespace MafaniaBot.Handlers
 			gameEngine = GameEngine.Instance;
 		}
 
-		public bool Contains(Message message)
+		public override bool Contains(Message message)
 		{
 			return message.Chat.Type == ChatType.Private;
 		}
 
-		public Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		public override Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
 		{
 			Message message = update.Message;
 			long userId = message.From.Id;

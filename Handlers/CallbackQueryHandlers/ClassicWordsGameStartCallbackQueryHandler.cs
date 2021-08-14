@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
-using MafaniaBot.Abstractions;
 using MafaniaBot.Dictionaries;
 using MafaniaBot.Engines;
 using MafaniaBot.Models;
@@ -8,23 +8,26 @@ using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 
-namespace MafaniaBot.CallbackQueries
+namespace MafaniaBot.Handlers.CallbackQueryHandlers
 {
-	public sealed class ClassicWordsGameStartCallbackQuery : IExecutable, IContainable<CallbackQuery>
+	/// <summary>
+	/// Triggered when user accept ClassicWordsGame invitation
+	/// </summary>
+	public sealed class ClassicWordsGameStartCallbackQueryHandler : Handler<CallbackQuery>
 	{
 		private readonly GameEngine gameEngine;
 
-		public ClassicWordsGameStartCallbackQuery()
+		public ClassicWordsGameStartCallbackQueryHandler()
         {
 			gameEngine = GameEngine.Instance;
 		}
 
-		public bool Contains(CallbackQuery callbackQuery)
+		public override bool Contains(CallbackQuery callbackQuery)
 		{
 			return callbackQuery.Data.StartsWith(BaseDictionary.gameInviteCbQueryData[typeof(ClassicWordsGame)]);
 		}
 
-		public async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+		public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
 		{
 			CallbackQuery callbackQuery = update.CallbackQuery;
 			long chatId = callbackQuery.Message.Chat.Id;
@@ -39,7 +42,7 @@ namespace MafaniaBot.CallbackQueries
 
 				if (!await db.SetContainsAsync(new RedisKey("MyChatMembers"), new RedisValue(secondPlayerId.ToString())))
 				{
-					msg = $"Нажми START в личных сообщениях чтобы играть в игры.";
+					msg = $"Нажми START в личной переписке со мной чтобы играть в игры.";
 					await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, showAlert: true);
 					return;
 				}
@@ -49,7 +52,7 @@ namespace MafaniaBot.CallbackQueries
 				Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
 			}
 
-			long firstPlayerId = long.Parse(callbackQuery.Data.Split('&')[1]);
+			long firstPlayerId = long.Parse(callbackQuery.Data.Split('&').Last());
 
 			if (firstPlayerId == secondPlayerId)
             {
@@ -65,11 +68,8 @@ namespace MafaniaBot.CallbackQueries
 			var players = new Player[] { new Player(firstPlayerId, firstPlayerFirstname, firstPlayerLastname),
 											new Player(secondPlayerId, secondPlayerFirstName, secondPlayerLastName) };
 
-			if (callbackQuery.Data.StartsWith(BaseDictionary.gameInviteCbQueryData[typeof(ClassicWordsGame)]) &&
-				firstPlayerFirstname != null)
-            {
+			if (firstPlayerFirstname != null)
 				gameEngine.RegisterGame(new ClassicWordsGame(chatId, players, TimeSpan.FromMinutes(3).TotalMilliseconds, 10, 10));
-			}
 		}
 	}
 }
