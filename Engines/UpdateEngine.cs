@@ -56,7 +56,7 @@ namespace MafaniaBot.Engines
 
 		private void RegisteredGameInviteEventRaised(object sender, GenericEventArgs<GameInvite> e)
         {
-            var msg = $"⚔️ {TextFormatter.ConvertTextToHtmlParseMode(e.Value.Username)} бросает вызов сыграть в {BaseDictionary.GameInviteMessage[e.Value.GameType]} ⚔️";
+            var msg = $"⚔️ {TextFormatter.ConvertTextToParseMode(e.Value.Username)} бросает вызов сыграть в {BaseDictionary.GameInviteMessage[e.Value.GameType]} ⚔️";
 
             var acceptBtn = InlineKeyboardButton.WithCallbackData("⚔️ Принять вызов ⚔️", $"{BaseDictionary.gameInviteCbQueryData[e.Value.GameType]}{e.Value.UserId}");
             var keyboard = new InlineKeyboardMarkup(new[] { new InlineKeyboardButton[] { acceptBtn } });

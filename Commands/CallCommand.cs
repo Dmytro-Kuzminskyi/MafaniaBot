@@ -46,7 +46,7 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                var chatMembers = await db.SetMembersAsync(new RedisKey($"ChatMembers:{chatId}"));
+                var chatMembers = await db.SetMembersAsync($"ChatMembers:{chatId}");
 
                 await botClient.SendTextMessageAsync(chatId, "<b>Все сюда!</b>", parseMode: ParseMode.Html);
 
@@ -54,7 +54,7 @@ namespace MafaniaBot.Commands
 
                 foreach(var chatMember in chatMembers)
                 {
-                    var icon = (await db.HashGetAsync(new RedisKey($"CallUserIcons:{chatId}"), new RedisValue(chatMember))).ToString();
+                    var icon = (await db.HashGetAsync($"CallUserIcons:{chatId}", chatMember)).ToString();
 
                     msg += $"{TextFormatter.GenerateMention(long.Parse(chatMember.ToString()), icon, null)}⠀";
 

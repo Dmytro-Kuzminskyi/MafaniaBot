@@ -41,7 +41,7 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                titleStrings = (await db.ListRangeAsync(new RedisKey($"Titles:{chatId}"), 0, 9)).ToStringArray();
+                titleStrings = (await db.ListRangeAsync($"Titles:{chatId}", 0, 9)).ToStringArray();
             }
             catch (Exception ex)
             {

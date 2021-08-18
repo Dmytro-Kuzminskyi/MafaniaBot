@@ -40,17 +40,13 @@ namespace MafaniaBot.Commands
                 return;
             }
 
-            var icon = BaseDictionary.Icons.RandomElement();
-            var hashEntry = new HashEntry(new RedisValue(userId.ToString()), new RedisValue(icon));
+            var icon = BaseDictionary.CallIcons.RandomElement();
 
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                var hashSetTask = db.HashSetAsync(new RedisKey($"CallUserIcons:{chatId}"), new HashEntry[] { hashEntry });
-                var stringSetTask = db.StringSetAsync(new RedisKey($"ActiveChatMembers:{chatId}:{userId}"), icon, TimeSpan.FromDays(1));
-
-                await Task.WhenAll(new Task[] { hashSetTask, stringSetTask });
+                await db.HashSetAsync($"CallUserIcons:{chatId}", new HashEntry[] { new HashEntry(userId.ToString(), icon) });
             }
             catch (Exception ex)
             {

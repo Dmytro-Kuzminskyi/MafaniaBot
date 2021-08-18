@@ -41,6 +41,7 @@ namespace MafaniaBot.Services
             };          
             _callbackQueryHandlers = new Handler<CallbackQuery>[]
             {
+                new TopBananaCallbackQueryHandler(),
                 new ClassicWordsGameStartCallbackQueryHandler()
             };
             _myChatMemberHandlers = new Handler<ChatMemberUpdated>[]

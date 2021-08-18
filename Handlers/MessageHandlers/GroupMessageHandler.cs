@@ -34,7 +34,7 @@ namespace MafaniaBot.Handlers.MessageHandlers
 
                     if (await db.SetAddAsync(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(userId.ToString())))
                     {
-                        var icon = BaseDictionary.Icons.RandomElement();
+                        var icon = BaseDictionary.CallIcons.RandomElement();
                         var hashEntry = new HashEntry(new RedisValue(userId.ToString()), new RedisValue(icon));
 
                         await db.HashSetAsync(new RedisKey($"CallUserIcons:{chatId}"), new HashEntry[] { hashEntry });

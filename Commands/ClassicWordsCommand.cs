@@ -48,7 +48,7 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                if (!await db.SetContainsAsync(new RedisKey("MyChatMembers"), new RedisValue(userId.ToString())))
+                if (!await db.SetContainsAsync("MyChatMembers", userId))
                 {
                     msg = $"Нажми START в <a href=\"{Startup.BOT_URL + "?start=&activate"}\">личных сообщениях</a> чтобы играть в игры.";
                     await botClient.SendTextMessageAsync(chatId, msg, ParseMode.Html, replyToMessageId: messageId, disableWebPagePreview: true);

@@ -27,7 +27,7 @@ namespace MafaniaBot.Dictionaries
             { BotCommandScopeType.AllChatAdministrators, BotCommandScope.AllChatAdministrators() },
         });
 
-        public static readonly List<string> Icons = new List<string> 
+        public static readonly List<string> CallIcons = new List<string> 
         {
             "🐶", "🐱", "🐭", "🐹", "🐰", "🦊", "🐻", "🐼", "🐨", "🐯", "🦁", "🐮", "🐷", "🐸", "🐵", "🐓", "🐧", "🦆", "🦅",
             "🦉", "🦇", "🐺", "🐗", "🐴", "🐝", "🐛", "🦋", "🐌", "🐞", "🐜", "🦟", "🦗", "🕷", "🦂", "🐢", "🐍", "🦎", "🐙",

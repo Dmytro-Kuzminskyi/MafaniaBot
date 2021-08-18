@@ -40,7 +40,7 @@ namespace MafaniaBot.Handlers.CallbackQueryHandlers
 			{
 				IDatabaseAsync db = redis.GetDatabase();
 
-				if (!await db.SetContainsAsync(new RedisKey("MyChatMembers"), new RedisValue(secondPlayerId.ToString())))
+				if (!await db.SetContainsAsync("MyChatMembers", secondPlayerId))
 				{
 					msg = $"Нажми START в личной переписке со мной чтобы играть в игры.";
 					await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, msg, showAlert: true);

@@ -41,11 +41,7 @@ namespace MafaniaBot.Commands
                 return;
             }
 
-            var text = message.Text;
-            var isShortCommand = !text.Contains($"{Command}@{Startup.BOT_USERNAME}");
-            var title = isShortCommand ? text.Replace(Command, string.Empty).Trim()
-                                        : text.Replace($"{Command}@{Startup.BOT_USERNAME}", string.Empty).Trim();
-
+            var title = TextFormatter.GetTextWithoutCommand(message.Text, Command);
             title = string.Join(string.Empty, Regex.Split(title, "[^a-zA-Zа-яА-Яё\\s]+"));
 
             if (title.Length == 0)
@@ -59,7 +55,7 @@ namespace MafaniaBot.Commands
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
-                var valueWithExpiry = await db.StringGetWithExpiryAsync(new RedisKey($"LastTitle:{chatId}"));
+                var valueWithExpiry = await db.StringGetWithExpiryAsync($"LastTitle:{chatId}");
 
                 if (!valueWithExpiry.Value.IsNull)
                 {
@@ -102,7 +98,7 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                randomUserIdTask = db.SetRandomMemberAsync(new RedisKey($"ChatMembers:{chatId}"));
+                randomUserIdTask = db.SetRandomMemberAsync($"ChatMembers:{chatId}");
             }
             catch (Exception ex)
             {
@@ -133,9 +129,9 @@ namespace MafaniaBot.Commands
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                var listLeftPushTask = db.ListLeftPushAsync(new RedisKey($"Titles:{chatId}"), new RedisValue($"{userMention} - {title}"));
-                var listTrimTask = db.ListTrimAsync(new RedisKey($"Titles:{chatId}"), 0, 9);
-                var stringSetTask = db.StringSetAsync(new RedisKey($"LastTitle:{chatId}"), new RedisValue(title), TimeSpan.FromHours(1));
+                var listLeftPushTask = db.ListLeftPushAsync($"Titles:{chatId}", $"{userMention} - {title}");
+                var listTrimTask = db.ListTrimAsync($"Titles:{chatId}", 0, 9);
+                var stringSetTask = db.StringSetAsync($"LastTitle:{chatId}", title, TimeSpan.FromHours(1));
 
                 await Task.WhenAll(new Task[] { listLeftPushTask, listTrimTask, stringSetTask });
             }

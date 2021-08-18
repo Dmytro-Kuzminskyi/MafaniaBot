@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using MafaniaBot.Handlers.CallbackQueryHandlers;
+using MafaniaBot.Helpers;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace MafaniaBot.Commands
 {
@@ -29,30 +33,63 @@ namespace MafaniaBot.Commands
         {
             Message message = update.Message;
             long chatId = message.Chat.Id;
-            SortedSetEntry[] listBabanasInfo = null;
-            int count = 10;
+            SortedSetEntry[] listBabanasUserInfo = null;
+
+            var text = TextFormatter.GetTextWithoutCommand(message.Text, Command);
+            long.TryParse(string.Join(string.Empty, Regex.Split(text, "[^0-9]+")), out var userInputCount);
+
+            userInputCount = userInputCount == 0 ? 10 : userInputCount;
 
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                listBabanasInfo = await db.SortedSetRangeByScoreWithScoresAsync(new RedisKey($"TopBanana"), take: count, order: Order.Descending);            
+                var count = await db.SortedSetLengthAsync($"TopBanana");
+
+                if (count < userInputCount)
+                    userInputCount = count;
+
+                listBabanasUserInfo = await db.SortedSetRangeByScoreWithScoresAsync($"TopBanana", take: userInputCount > 10 ? 10 : userInputCount, order: Order.Descending);            
             }
             catch (Exception ex)
             {
                 Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
             }
 
-            var msg = $"<b>Топ-{count} бананов</b>\n\n";
+            var msg = $"<b>Топ-{userInputCount} бананов</b>\n\n";
             var n = 1;
 
-            foreach (var bananaInfo in listBabanasInfo)
+            try
             {
-                var lengthText = bananaInfo.Score.ToString("n2");
-                msg += $"{n++}. {bananaInfo.Element} - {lengthText} см\n";
+                IDatabaseAsync db = redis.GetDatabase();
+
+                foreach (var bananaUserInfo in listBabanasUserInfo)
+                {
+                    var userName = (await db.HashGetAsync($"Banana:{bananaUserInfo.Element}", "Name")).ToString();
+                    var lengthText = bananaUserInfo.Score.ToString("n2");
+
+                    msg += $"{n++}. {userName} - {lengthText} см\n";
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+                msg = $"Error while forming the list!";
             }
 
-            await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+            if (userInputCount > 10)
+            {
+                msg += $"1/{Math.Ceiling((decimal)userInputCount / 10)}";
+
+                var nextBtn = InlineKeyboardButton.WithCallbackData("⏩", $"{TopBananaCallbackQueryHandler.CallbackOperation}1&2&{userInputCount}");
+                var keyboard = new InlineKeyboardMarkup(nextBtn);
+
+                await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyMarkup: keyboard);
+            }
+            else
+            {
+                await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html);
+            }
         }
     }
 }

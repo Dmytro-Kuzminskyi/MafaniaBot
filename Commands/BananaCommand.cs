@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
-using MafaniaBot.Helpers;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
@@ -32,13 +31,21 @@ namespace MafaniaBot.Commands
             long chatId = message.Chat.Id;
             long userId = message.From.Id;
             int messageId = message.MessageId;
+            string positionDiffIcon = string.Empty;
+            string positionText;
             string msg;
 
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
 
-                var valueWithExpiry = await db.StringGetWithExpiryAsync(new RedisKey($"LastBanana:{userId}"));
+                User userInfo = (await botClient.GetChatMemberAsync(chatId, userId)).User;
+                var valueWithExpiryTask = db.StringGetWithExpiryAsync($"LastBanana:{userId}");
+                var userName = $"{userInfo.FirstName} {userInfo.LastName}".Trim();
+
+                await db.HashSetAsync($"Banana:{userId}", new HashEntry[] { new HashEntry("Name", userName)});
+
+                var valueWithExpiry = await valueWithExpiryTask;
 
                 if (!valueWithExpiry.Value.IsNull)
                 {
@@ -76,26 +83,55 @@ namespace MafaniaBot.Commands
                     return;
                 }
                 
-                var getChatMembertask = botClient.GetChatMemberAsync(chatId, userId);
-                var userData = await db.HashGetAllAsync(new RedisKey($"Banana:{userId}"));
+                var userData = await db.HashGetAllAsync($"Banana:{userId}");
 
                 float.TryParse(userData?.Where(e => e.Name == "Length").Select(e => e.Value).FirstOrDefault(), out var length);
-                length = await BananaGrowHandler(length, botClient, chatId, messageId);
+                length = BananaGrowHandler(length, out var dirrefence, out var isGrow);
 
-                User userInfo = (await getChatMembertask).User;
-                var userTag = TextFormatter.GenerateMention(userId, userInfo.FirstName, userInfo.LastName);
-                
-                var hashEntries = new HashEntry[] 
-                {
-                    new HashEntry(new RedisValue("UserTag"), new RedisValue(userTag)),
-                    new HashEntry(new RedisValue("Length"), new RedisValue(length.ToString("n2")))                
-                };
+                if (isGrow)
+                    msg = $"Твой 🍌 увеличился на {string.Format("{0:0.00}", dirrefence)} см!\n";
+                else
+                    msg = $"Твой 🍌 уменьшился на {string.Format("{0:0.00}", dirrefence)} см!\n";
 
-                var hashSetTask = db.HashSetAsync(new RedisKey($"Banana:{userId}"), hashEntries);
-                var sortedSetAddTask = db.SortedSetAddAsync(new RedisKey($"TopBanana"), hashEntries.First().Value, length);
-                var stringSetTask = db.StringSetAsync(new RedisKey($"LastBanana:{userId}"), new RedisValue(userTag), TimeSpan.FromHours(4));
+                msg += $"Теперь его длина составляет {string.Format("{0:0.00}", length)} см!\n";
+
+                var currentPosition = (await db.SortedSetRankAsync($"TopBanana", userId, Order.Descending) + 1);
+
+                var hashSetTask = db.HashSetAsync($"Banana:{userId}", new HashEntry[] { new HashEntry("Length", length.ToString("n2")) });
+                var sortedSetAddTask = db.SortedSetAddAsync($"TopBanana", userId, length);
+                var stringSetTask = db.StringSetAsync($"LastBanana:{userId}", string.Empty, TimeSpan.FromHours(4));
 
                 await Task.WhenAll(new Task[] { hashSetTask, sortedSetAddTask, stringSetTask });
+
+                var nextPosition = (await db.SortedSetRankAsync($"TopBanana", userId, Order.Descending) + 1);
+                
+                var positionDiff = (currentPosition ?? 0) - (nextPosition ?? 0);
+
+                if (positionDiff > 0)
+                    positionDiffIcon = "🔼";
+                else if (positionDiff < 0)
+                    positionDiffIcon = "🔽";
+
+                positionText = nextPosition.ToString();
+
+                switch (nextPosition)
+                {
+                    case 1:
+                        positionText = "🥇";
+                        break;
+                    case 2:
+                        positionText = "🥈";
+                        break;
+                    case 3:
+                        positionText = "🥉";
+                        break;
+                }
+
+                var positionDiffText = positionDiff != 0 ? Math.Abs(positionDiff).ToString() : string.Empty;
+
+                msg += $"Место в глобальном рейтинге: <b>{positionText}</b>   {positionDiffIcon} <b>{positionDiffText}</b>";
+
+                await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyToMessageId: messageId);
             }
             catch (Exception ex)
             {
@@ -103,43 +139,34 @@ namespace MafaniaBot.Commands
             }
         }
 
-        private async Task<float> BananaGrowHandler(float? length, ITelegramBotClient botClient, long chatId, int messageId)
+        private float BananaGrowHandler(float? length, out float difference, out bool isGrow)
         {
-            string msg;
             var random = new Random(DateTime.Now.Millisecond);
             var currentLength = length ?? 0;
 
-            float lengthDiff = 30 - currentLength;
-            float chanceToGrowInitial = 0.4f;
-            float chanceToGrowStep = 0.02f;
-            float growMultiplierInitial = 0.5f;
-            float growMultiplierStep = 0.05f;
+            float lengthDiff = 50 - currentLength;
+            float chanceToGrowInitial = 0.6f;
+            float chanceToGrowStep = 0.008f;
+            float growMultiplierInitial = 0.2f;
+            float growMultiplierStep = 0.04f;
 
             float totalChanceToGrow = lengthDiff > 0 ? (lengthDiff * chanceToGrowStep) + chanceToGrowInitial : chanceToGrowInitial;
             float totalGrowMultiplier = lengthDiff > 0 ? (lengthDiff * growMultiplierStep) + growMultiplierInitial : growMultiplierInitial;
 
-            var difference = (float)(random.NextDouble() * totalGrowMultiplier);
-            var diffText = difference.ToString("n2");
+            difference = (float)(random.NextDouble() * totalGrowMultiplier);
 
             if (random.NextDouble() <= totalChanceToGrow)
             {
                 currentLength += difference;
-                var currentText = currentLength.ToString("n2");
-
-                msg = $"Твой 🍌 увеличился на {diffText} см!\n" +
-                    $"Теперь его длина составляет {currentText} см!";
+                isGrow = true;
             }
             else
             {
                 currentLength -= difference;
                 currentLength = currentLength < 0 ? 0 : currentLength;
-                var currentText = currentLength.ToString("n2");
-
-                msg = $"Твой 🍌 уменьшился на {diffText} см!\n" +
-                    $"Теперь его длина составляет {currentText} см!";               
+                isGrow = false;        
             }
 
-            await botClient.SendTextMessageAsync(chatId, msg, parseMode: ParseMode.Html, replyToMessageId: messageId);
             return currentLength;
         }
     }
