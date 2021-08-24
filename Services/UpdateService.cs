@@ -1,67 +1,86 @@
-﻿using System.Collections.Generic;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Commands;
 using MafaniaBot.Handlers.CallbackQueryHandlers;
 using MafaniaBot.Handlers.MessageHandlers;
 using MafaniaBot.Handlers.MyChatMemberHandlers;
 using MafaniaBot.Models;
+using MafaniaBot.Services.UpdateResolvers;
+using StackExchange.Redis;
+using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
 namespace MafaniaBot.Services
 {
-    public sealed class UpdateService
-    {      
-        private static readonly object instanceLock = new object();
-        private readonly Dictionary<Command, BotCommandScopeType> commands;
-        private readonly Handler<Message>[] _messageHandlers;
-        private readonly Handler<CallbackQuery>[] _callbackQueryHandlers;
-        private readonly Handler<ChatMemberUpdated>[] _myChatMemberHandlers;
-        private static UpdateService instance = null;
+    public sealed class UpdateService : IUpdateService
+    {
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
+        private readonly ITelegramBotClient _telegramBotClient;
+        private readonly ITranslateService _translateService;
+        private readonly ScopedCommand[] commands;
+        private readonly Handler<CallbackQuery>[] callbackQueryHandlers;
+        private readonly Handler<Message>[] messageHandlers;
+        private readonly Handler<ChatMemberUpdated>[] myChatMemberHandlers;
 
-        private UpdateService()
-        {            
-            commands = new Dictionary<Command, BotCommandScopeType>
+        public UpdateService(IConnectionMultiplexer connectionMultiplexer, ITelegramBotClient telegramBotClient, ITranslateService translateService)
+        {
+            _connectionMultiplexer = connectionMultiplexer;
+            _telegramBotClient = telegramBotClient;
+            _translateService = translateService;
+
+            commands = new ScopedCommand[]
             {
-                { new ClassicWordsCommand(), BotCommandScopeType.Default },
-                { new BananaCommand(), BotCommandScopeType.Default },                
-                { new TitleCommand(), BotCommandScopeType.Default },
-                { new CallCommand(), BotCommandScopeType.Default },
-                { new TitlesCommand(), BotCommandScopeType.Default },
-                { new TopBananaCommand(), BotCommandScopeType.Default },
-                { new ChangeIconCommand(), BotCommandScopeType.Default },
-                //{ new HelpCommand(), BotCommandScopeType.Default },
-                { new StartCommand(), BotCommandScopeType.Default }
+                new BananaCommand(new [] { BotCommandScopeType.AllPrivateChats, BotCommandScopeType.AllGroupChats }),
+                new TopBananasCommand(new [] { BotCommandScopeType.AllPrivateChats, BotCommandScopeType.AllGroupChats }),
+                new TitleCommand(new [] { BotCommandScopeType.AllGroupChats }),
+                new TitlesCommand(new [] { BotCommandScopeType.AllGroupChats }),
+                new CallCommand(new [] { BotCommandScopeType.AllGroupChats }),
+                new ChangeIconCommand(new [] { BotCommandScopeType.AllGroupChats }),
+                new SettingsCommand(new [] { BotCommandScopeType.AllPrivateChats, BotCommandScopeType.AllGroupChats }),
+                //new HelpCommand(BotCommandScopeType.Default),
+                new StartCommand(new [] { BotCommandScopeType.Default }),
+                new InformCommand(new [] { BotCommandScopeType.Default })
             };
-            _messageHandlers = new Handler<Message>[]
+            callbackQueryHandlers = new Handler<CallbackQuery>[]
+            {
+                new TopBananasCallbackQueryHandler(),
+                new LanguageCallbackQueryHandler(),
+                new SelectLanguageCallbackQueryHandler(),
+                new LanguageBackCallbackQueryHandler(),
+                new SettingsExitCallbackQueryHandler()
+            };
+            messageHandlers = new Handler<Message>[]
             {
                 new GroupMessageHandler(),
                 new PrivateMessageHandler(),
                 new NewChatMemberHandler(),
                 new LeftChatMemberHandler()
-            };          
-            _callbackQueryHandlers = new Handler<CallbackQuery>[]
-            {
-                new TopBananaCallbackQueryHandler(),
-                new ClassicWordsGameStartCallbackQueryHandler()
             };
-            _myChatMemberHandlers = new Handler<ChatMemberUpdated>[]
+            myChatMemberHandlers = new Handler<ChatMemberUpdated>[]
             {
                 new MyChatMemberPrivateHandler(),
                 new MyChatMemberGroupHandler()
             };
         }
 
-        public static UpdateService Instance
-        {
-            get
-            {
-                lock (instanceLock) return instance ?? new UpdateService();
-            }
-        }
+        public ScopedCommand[] Commands => commands.Where(e => e.GetType() != typeof(StartCommand) || e.GetType() != typeof(InformCommand)).ToArray();
 
-        public Dictionary<Command, BotCommandScopeType> Commands => commands;
-        public Handler<Message>[] MessageHandlers => _messageHandlers;
-        public Handler<CallbackQuery>[] CallbackQueryHandlers => _callbackQueryHandlers;
-        public Handler<ChatMemberUpdated>[] MyChatMemberHandlers => _myChatMemberHandlers;
+        public async Task ProcessUpdate(Update update)
+        {
+            IUpdateResolver resolver = update.Type switch
+            {
+                UpdateType.Message => new MessageResolver(commands, messageHandlers),
+                UpdateType.CallbackQuery => new CallbackQueryResolver(callbackQueryHandlers),
+                UpdateType.MyChatMember => new MyChatMemberResolver(myChatMemberHandlers),
+                _ => null
+            };
+
+            if (resolver == null && !resolver.Supported(update))
+                return;
+
+            await resolver.Execute(update, _telegramBotClient, _connectionMultiplexer, _translateService);
+        }
     }
 }

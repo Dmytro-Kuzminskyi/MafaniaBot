@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
-using MafaniaBot.Engines;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
@@ -14,39 +14,33 @@ namespace MafaniaBot.Handlers.MyChatMemberHandlers
     /// </summary>
     public sealed class MyChatMemberPrivateHandler : Handler<ChatMemberUpdated>
     {
-        public override bool Contains(ChatMemberUpdated chatMemberUpdated)
+        public override bool Supported(ChatMemberUpdated chatMemberUpdated)
         {
             return chatMemberUpdated.Chat.Type == ChatType.Private;
         }
 
-        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
         {
-            ChatMemberUpdated myChatMember = update.MyChatMember;
-            ChatMemberStatus status = myChatMember.NewChatMember.Status;
-            long chatId = myChatMember.Chat.Id;
-            long userId = myChatMember.From.Id;
-
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
+                ChatMemberUpdated myChatMember = update.MyChatMember;
+                ChatMemberStatus status = myChatMember.NewChatMember.Status;
+                long chatId = myChatMember.Chat.Id;
+                string langCode = myChatMember.From.LanguageCode;
 
                 if (status == ChatMemberStatus.Member)
                 {
-                    await db.SetAddAsync(new RedisKey("MyChatMembers"), new RedisValue(chatId.ToString()));
+                    await db.HashSetAsync($"MyChatMember:{chatId}", new[] { new HashEntry ("LanguageCode", langCode)});
                 }
                 else
                 {
-                    await db.SetRemoveAsync(new RedisKey("MyChatMembers"), new RedisValue(chatId.ToString()));
-
-                    var game = (WordsGame)GameEngine.Instance.FindGameByPlayerId(userId);
-
-                    if (game != null)
-                        game.ForceStop(userId);
+                    await db.KeyDeleteAsync($"MyChatMember:{chatId}");
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
             }
         }
     }

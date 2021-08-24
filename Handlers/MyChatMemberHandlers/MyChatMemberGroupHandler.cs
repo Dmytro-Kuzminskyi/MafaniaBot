@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Dictionaries;
 using MafaniaBot.Extensions;
 using MafaniaBot.Models;
@@ -15,50 +16,47 @@ namespace MafaniaBot.Handlers.MyChatMemberHandlers
     /// </summary>
     public sealed class MyChatMemberGroupHandler : Handler<ChatMemberUpdated>
     {
-        public override bool Contains(ChatMemberUpdated chatMemberUpdated)
+        public override bool Supported(ChatMemberUpdated chatMemberUpdated)
         {
             return chatMemberUpdated.Chat.Type != ChatType.Private;
         }
 
-        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
         {
-            ChatMemberUpdated myChatMember = update.MyChatMember;
-            ChatMemberStatus status = myChatMember.NewChatMember.Status;
-            long chatId = myChatMember.Chat.Id;       
-
             try
             {
                 IDatabaseAsync db = redis.GetDatabase();
+                ChatMemberUpdated myChatMember = update.MyChatMember;
+                ChatMemberStatus status = myChatMember.NewChatMember.Status;
+                long chatId = myChatMember.Chat.Id;
+                string langCode = myChatMember.From.LanguageCode;
 
                 if (status == ChatMemberStatus.Member)
                 {
-                    var chatUserAdmins = await botClient.GetChatAdministratorsAsync(chatId);
-                    var setAddTask = db.SetAddAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
+                    await db.HashSetAsync($"MyGroup:{chatId}", new[] { new HashEntry("LanguageCode", langCode) });
 
-                    Parallel.ForEach(chatUserAdmins, async userAdmin =>
+                    var chatAdmins = await botClient.GetChatAdministratorsAsync(chatId);
+
+                    foreach (var admin in chatAdmins)
                     {
-                        var user = userAdmin.User;
-                        await db.SetAddAsync(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(user.Id.ToString()));
-
-                        if (await db.HashExistsAsync(new RedisKey($"CallUserIcons:{chatId}"), new RedisValue(user.Id.ToString())))
-                            return;
-
                         var icon = BaseDictionary.CallIcons.RandomElement();
-                        var hashEntry = new HashEntry(new RedisValue(user.Id.ToString()), new RedisValue(icon));
 
-                        await db.HashSetAsync(new RedisKey($"CallUserIcons:{chatId}"), new HashEntry[] { hashEntry });
-                    });
-
-                    await setAddTask;
+                        await db.HashSetAsync($"ChatMember:{chatId}:{admin.User.Id}", new[] { new HashEntry("CallIcon", icon) });
+                    }
                 }
                 else
                 {
-                    await db.SetRemoveAsync(new RedisKey("MyGroups"), new RedisValue(chatId.ToString()));
+                    await db.KeyDeleteAsync($"MyGroup:{chatId}");
+
+                    var chatMembersResult = (RedisKey[])await db.ExecuteAsync("KEYS", $"ChatMember:{chatId}:*");
+                    
+                    foreach (var key in chatMembersResult)
+                        await db.KeyDeleteAsync(key);
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
             }
         }
     }

@@ -20,7 +20,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Data\**" CopyToOutputDirectory="PreserveNewest" LinkBase="data" />
+	  <Folder Include="BackgroundJobs\" />
 	</ItemGroup>
 	
 </Project>

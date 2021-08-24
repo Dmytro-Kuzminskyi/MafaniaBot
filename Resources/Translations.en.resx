@@ -1,0 +1,228 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="AddToGroupString" xml:space="preserve">
+    <value>Add to group</value>
+  </data>
+  <data name="BackString" xml:space="preserve">
+    <value>⬅️ Back</value>
+  </data>
+  <data name="BananasString" xml:space="preserve">
+    <value>bananas</value>
+  </data>
+  <data name="CentimetersString" xml:space="preserve">
+    <value>cm</value>
+  </data>
+  <data name="CreatorOnlyString" xml:space="preserve">
+    <value>This command is available only for chat creator</value>
+  </data>
+  <data name="en" xml:space="preserve">
+    <value>🇺🇸 English</value>
+  </data>
+  <data name="ExitString" xml:space="preserve">
+    <value>✖️ Exit</value>
+  </data>
+  <data name="FirstMessageString" xml:space="preserve">
+    <value>Well, let's see who is</value>
+  </data>
+  <data name="GetString" xml:space="preserve">
+    <value>gets</value>
+  </data>
+  <data name="GlobalTopPlaceString" xml:space="preserve">
+    <value>Place in global ranking</value>
+  </data>
+  <data name="GoHereString" xml:space="preserve">
+    <value>Go here</value>
+  </data>
+  <data name="GrewUpString" xml:space="preserve">
+    <value>grew up by</value>
+  </data>
+  <data name="HelloString" xml:space="preserve">
+    <value>Hello</value>
+  </data>
+  <data name="HelpString" xml:space="preserve">
+    <value>Type /help for assistance</value>
+  </data>
+  <data name="HoursString" xml:space="preserve">
+    <value>hrs</value>
+  </data>
+  <data name="IncorrectCommandFormatString" xml:space="preserve">
+    <value>Type command in format /title [title]</value>
+  </data>
+  <data name="LanguageChangedString" xml:space="preserve">
+    <value>Language changed to</value>
+  </data>
+  <data name="LanguageString" xml:space="preserve">
+    <value>🌎 Language</value>
+  </data>
+  <data name="LastTitlesString" xml:space="preserve">
+    <value>The last titles of the group</value>
+  </data>
+  <data name="MenuString" xml:space="preserve">
+    <value>⚙️ Settings menu</value>
+  </data>
+  <data name="MinutesString" xml:space="preserve">
+    <value>min</value>
+  </data>
+  <data name="NewIconString" xml:space="preserve">
+    <value>Your new call icon</value>
+  </data>
+  <data name="NewLengthString" xml:space="preserve">
+    <value>Now it length is</value>
+  </data>
+  <data name="NextTitleInString" xml:space="preserve">
+    <value>Next title will be available in</value>
+  </data>
+  <data name="NextTryInString" xml:space="preserve">
+    <value>Next try will be available in</value>
+  </data>
+  <data name="NoUserInfoString" xml:space="preserve">
+    <value>Wait a while, gathering user info</value>
+  </data>
+  <data name="ru" xml:space="preserve">
+    <value>🇷🇺 Russian</value>
+  </data>
+  <data name="SecondMessageString" xml:space="preserve">
+    <value>Take a bet, gentlemen</value>
+  </data>
+  <data name="SecondsString" xml:space="preserve">
+    <value>sec</value>
+  </data>
+  <data name="SelectLanguageString" xml:space="preserve">
+    <value>Select language</value>
+  </data>
+  <data name="ShrunkString" xml:space="preserve">
+    <value>shrunk by</value>
+  </data>
+  <data name="SystemMessageString" xml:space="preserve">
+    <value>System message</value>
+  </data>
+  <data name="ThirdMessageString" xml:space="preserve">
+    <value>Sorry if someone didn't catch in time, but we're about to announce the winner</value>
+  </data>
+  <data name="TitleString" xml:space="preserve">
+    <value>So, the title</value>
+  </data>
+  <data name="TopString" xml:space="preserve">
+    <value>Top</value>
+  </data>
+  <data name="YourString" xml:space="preserve">
+    <value>Your</value>
+  </data>
+</root>

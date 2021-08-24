@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Dictionaries;
 using MafaniaBot.Extensions;
 using MafaniaBot.Models;
@@ -15,35 +17,44 @@ namespace MafaniaBot.Handlers.MessageHandlers
     /// </summary>
     public sealed class GroupMessageHandler : Handler<Message>
     {
-        public override bool Contains(Message message)
+        public override bool Supported(Message message)
         {
             return message.Chat.Type != ChatType.Private;
         }
 
-        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
         {
-            Message message = update.Message;
-            long chatId = message.Chat.Id;
-            long userId = message.From.Id;
-
             try
             {
-                if (message.From.Username != Startup.BOT_USERNAME)
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
+                IDatabaseAsync db = redis.GetDatabase();
+                Message message = update.Message;
+                long chatId = message.Chat.Id;
+                long userId = message.From.Id;
 
-                    if (await db.SetAddAsync(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(userId.ToString())))
+                if (!await db.HashExistsAsync($"MyGroup:{chatId}", "LanguageCode"))
+                {
+                    await db.HashSetAsync($"MyGroup:{chatId}", new[] { new HashEntry("LanguageCode", translateService.SupportedLanguages.First()) });
+
+                    var chatAdmins = await botClient.GetChatAdministratorsAsync(chatId);
+
+                    foreach (var admin in chatAdmins)
                     {
                         var icon = BaseDictionary.CallIcons.RandomElement();
-                        var hashEntry = new HashEntry(new RedisValue(userId.ToString()), new RedisValue(icon));
 
-                        await db.HashSetAsync(new RedisKey($"CallUserIcons:{chatId}"), new HashEntry[] { hashEntry });
+                        await db.HashSetAsync($"ChatMember:{chatId}:{admin.User.Id}", new[] { new HashEntry("CallIcon", icon) });
                     }
+                }
+
+                if (!await db.HashExistsAsync($"ChatMember:{chatId}:{userId}", "CallIcon"))
+                {
+                    var icon = BaseDictionary.CallIcons.RandomElement();
+
+                    await db.HashSetAsync($"ChatMember:{chatId}:{userId}", new[] { new HashEntry("CallIcon", icon) });
                 }
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
             }
         }
     }

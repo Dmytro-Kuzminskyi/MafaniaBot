@@ -1,40 +1,48 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using MafaniaBot.BackgroundJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Quartz;
 using Quartz.Impl;
+using StackExchange.Redis;
+using Telegram.Bot;
 
 namespace MafaniaBot.Services
 {  
-    public class BackgroundWorkerService : BackgroundService
+    public class BackgroundWorkerService : IHostedService
     {
-        private readonly IConfiguration _configuration;        
+        private readonly IConfiguration _configuration;
+        private readonly ITelegramBotClient _telegramBotClient;
+        private readonly IConnectionMultiplexer _connectionMultiplexer;
         private readonly StdSchedulerFactory stdSchedulerFactory;
         private IScheduler _scheduler;
 
-        public BackgroundWorkerService(IConfiguration configuration)
+        public BackgroundWorkerService(IConfiguration configuration, ITelegramBotClient telegramBotClient, IConnectionMultiplexer connectionMultiplexer)
         {
             stdSchedulerFactory = new StdSchedulerFactory();
             _configuration = configuration;
+            _telegramBotClient = telegramBotClient;
+            _connectionMultiplexer = connectionMultiplexer;
         }
 
-        protected override async Task ExecuteAsync(CancellationToken cancellationToken)
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
-            await ScheduleJob<GameInviteCleanJob>(_configuration["BackgroundWorker:GameInviteCleanJobTriggerTime"], cancellationToken);
 
-            if (cancellationToken.IsCancellationRequested)
-                await _scheduler.Shutdown();
         }
 
-        private async Task ScheduleJob<T>(string cronExpresssion, CancellationToken cancellationToken) where T : IJob
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _scheduler = await stdSchedulerFactory.GetScheduler();
-            await _scheduler.Start();
+            await _scheduler?.Shutdown(cancellationToken);
+        }
+
+        private async Task ScheduleJob<T>(JobDataMap jobDataMap, string cronExpresssion, CancellationToken cancellationToken) where T : IJob
+        {
+            _scheduler = await stdSchedulerFactory.GetScheduler(cancellationToken);
+            await _scheduler.Start(cancellationToken);
 
             var jobDetail = JobBuilder.Create<T>()
                                         .WithIdentity(typeof(T).Name)
+                                        .UsingJobData(jobDataMap)
                                         .Build();
 
             var trigger = TriggerBuilder.Create()

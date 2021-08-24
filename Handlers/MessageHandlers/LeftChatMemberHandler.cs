@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
@@ -12,29 +13,25 @@ namespace MafaniaBot.Handlers.MessageHandlers
     /// </summary>
     public sealed class LeftChatMemberHandler : Handler<Message>
     {
-        public override bool Contains(Message message)
+        public override bool Supported(Message message)
         {
             return message.LeftChatMember != null;
         }
 
-        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
         {
-            Message message = update.Message;
-            long chatId = message.Chat.Id;
-            long userId = message.LeftChatMember.Id;
-
             try
             {
-                if (message.LeftChatMember.Username != Startup.BOT_USERNAME)
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
+                IDatabaseAsync db = redis.GetDatabase();
+                Message message = update.Message;
+                long chatId = message.Chat.Id;
+                long userId = message.LeftChatMember.Id;
 
-                    await db.SetRemoveAsync(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(userId.ToString()));
-                }
+                await db.KeyDeleteAsync($"ChatMember:{chatId}:{userId}");
             }
             catch (Exception ex)
             {
-                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
             }
         }
     }

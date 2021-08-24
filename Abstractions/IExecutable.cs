@@ -7,6 +7,6 @@ namespace MafaniaBot.Abstractions
 {
     public interface IExecutable
     {
-        Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis);       
+        Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService);       
     }
 }

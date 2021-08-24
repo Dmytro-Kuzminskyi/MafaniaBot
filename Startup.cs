@@ -1,10 +1,4 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
 using MafaniaBot.Abstractions;
-using MafaniaBot.Commands;
-using MafaniaBot.Dictionaries;
-using MafaniaBot.Engines;
 using MafaniaBot.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -18,79 +12,51 @@ namespace MafaniaBot
     public class Startup
     {
         private readonly IConfiguration _configuration;
-        internal static string REDIS_CONNECTION { get; private set; }
         internal static string BOT_URL { get; private set; }
         internal static string BOT_USERNAME { get; private set; }
+        internal static long SUPPORT_USERID { get; private set; }
 
         public Startup(IConfiguration configuration)
         {
             _configuration = configuration;
-            REDIS_CONNECTION = _configuration["Connections:Redis"];
             BOT_URL = _configuration["Bot:Url"];
             BOT_USERNAME = _configuration["Bot:Username"];
+            SUPPORT_USERID = long.Parse(_configuration["Support:UserId"]);
         }
 
         public void ConfigureServices(IServiceCollection services)
         {
             services
-                .ConfigureBot(_configuration)
-                .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(REDIS_CONNECTION))        
-                .AddSingleton<IUpdateEngine, UpdateEngine>()
-                .AddHostedService<BackgroundWorkerService>()
-                .AddControllers()
-                .AddNewtonsoftJson(options =>
-                    {
-                        options.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
-                        options.SerializerSettings.ContractResolver = new DefaultContractResolver();
-                    });
+                    .AddSingleton<IConnectionMultiplexer>(ConnectionMultiplexer.Connect(_configuration["Connections:Redis"]))
+                    .AddSingleton<IUpdateService, UpdateService>()
+                    .AddSingleton<ITranslateService, TranslateService>()
+                    .AddHostedService<ConfigureBot>()
+                    .AddHostedService<BackgroundWorkerService>();
+            services
+                    .AddHttpClient("tgbotclient")
+                    .AddTypedClient<ITelegramBotClient>(e => new TelegramBotClient(_configuration["Bot:Token"], e));                  
+            services
+                    .AddControllers()
+                    .AddNewtonsoftJson(options =>
+                        {
+                            options.SerializerSettings.Formatting = Newtonsoft.Json.Formatting.Indented;
+                            options.SerializerSettings.ContractResolver = new DefaultContractResolver();
+                        });
         }
 
-        public void Configure(IApplicationBuilder app, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public void Configure(IApplicationBuilder app)
         {
-            var updateService = UpdateService.Instance;
-            var commands = updateService.Commands.Where(e => e.Key.GetType() != typeof(StartCommand));
-            var scopes = updateService.Commands.Values.Distinct();
-
-            foreach (var scope in scopes)
-            {
-                botClient.SetMyCommandsAsync(commands.Where(e => e.Value == scope).Select(e => e.Key), BaseDictionary.BotCommandScopeMap[scope]).Wait();
-            }
-
-            SyncronizeRedisData(botClient, redis);
-
             app
                 .UseRouting()
+                .UseCors()
                 .UseEndpoints(endpoints =>
                     {
-                        endpoints.MapDefaultControllerRoute();
+                        endpoints.MapControllerRoute(
+                            name: "tgbotclient",
+                            pattern: $"bot{_configuration["Bot:Token"]}",
+                            new { controller = "Webhook", action = "Post" });
+						endpoints.MapControllers();
                     });
-        }
-
-        private void SyncronizeRedisData(ITelegramBotClient botClient, IConnectionMultiplexer redis)
-        {
-            try
-            {
-                IDatabase db = redis.GetDatabase();
-
-                var chatIds = db.SetMembers("MyGroups").Select(e => long.Parse(e)).ToArray();
-
-                Parallel.ForEach(chatIds, chatId =>
-                {
-                    var userIds = db.SetMembers($"ChatMembers:{chatId}").Select(e => long.Parse(e)).ToArray();
-
-                    foreach (var userId in userIds)
-                    {
-                        var chatMember = botClient.GetChatMemberAsync(chatId, userId).GetAwaiter().GetResult();
-
-                        if (chatMember == null)
-                            db.SetRemove(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(userId.ToString()));
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
-            }
         }
     }
 }

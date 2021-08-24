@@ -1,58 +1,40 @@
-﻿using System.Linq;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
-using MafaniaBot.Engines;
+﻿using System.Threading.Tasks;
 using MafaniaBot.Models;
 using StackExchange.Redis;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using MafaniaBot.Abstractions;
+using System;
 
 namespace MafaniaBot.Handlers.MessageHandlers
 {
-	/// <summary>
-	/// Triggered when user sends message to chat with bot
-	/// </summary>
-	public sealed class PrivateMessageHandler : Handler<Message>
-	{
-		private readonly GameEngine gameEngine;
-
-		public PrivateMessageHandler()
+    /// <summary>
+    /// Triggered when user sends message to chat with bot
+    /// </summary>
+    public sealed class PrivateMessageHandler : Handler<Message>
+    {
+        public override bool Supported(Message message)
         {
-			gameEngine = GameEngine.Instance;
-		}
+            return message.Chat.Type == ChatType.Private;
+        }
 
-		public override bool Contains(Message message)
-		{
-			return message.Chat.Type == ChatType.Private;
-		}
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
+        {
+            try
+            {
+                IDatabaseAsync db = redis.GetDatabase();
+                Message message = update.Message;
+                long chatId = message.Chat.Id;
+                string langCode = message.From.LanguageCode;
 
-		public override Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
-		{
-			Message message = update.Message;
-			long userId = message.From.Id;
-			string word;
-
-			var game = gameEngine.FindGameByPlayerId(userId);
-
-			if (game == null)
-				return Task.CompletedTask;
-
-			var concreteGame = (WordsGame)game;
-			var text = message.Text;
-
-			if (text == null)
-				return Task.CompletedTask;
-
-			word = text.Contains(' ') ? text.Split(' ').First() : text;
-			word = Regex.Match(word, @"^[а-яА-Я]+$").Value;
-
-			if (word.Length == 0)
-				return Task.CompletedTask;
-
-			concreteGame.ProcessWord(userId, word);
-
-			return Task.CompletedTask;
-		}
-	}
+                if (!await db.HashExistsAsync($"MyChatMember:{chatId}", "LanguageCode"))
+                    await db.HashSetAsync($"MyChatMember:{chatId}", new[] { new HashEntry("LanguageCode", langCode) });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
+            }
+        }
+    }
 }

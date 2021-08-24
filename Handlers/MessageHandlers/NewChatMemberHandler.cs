@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using MafaniaBot.Abstractions;
 using MafaniaBot.Dictionaries;
 using MafaniaBot.Extensions;
 using MafaniaBot.Models;
@@ -14,44 +16,27 @@ namespace MafaniaBot.Handlers.MessageHandlers
     /// </summary>
     public sealed class NewChatMemberHandler : Handler<Message>
     {
-        public override bool Contains(Message message)
+        public override bool Supported(Message message)
         {
-            return message.NewChatMembers != null;
+            return !message.NewChatMembers?.First().IsBot ?? false;
         }
 
-        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis)
+        public override async Task Execute(Update update, ITelegramBotClient botClient, IConnectionMultiplexer redis, ITranslateService translateService)
         {
-            Message message = update.Message;
-            long chatId = message.Chat.Id;
-
-            await Task.Run(() =>
+            try
             {
-                try
-                {
-                    IDatabaseAsync db = redis.GetDatabase();
+                IDatabaseAsync db = redis.GetDatabase();
+                Message message = update.Message;
+                User newChatMember = message.NewChatMembers.First();
+                long chatId = message.Chat.Id;
+                var icon = BaseDictionary.CallIcons.RandomElement();
 
-                    Parallel.ForEach(message.NewChatMembers, async member =>
-                    {
-                        if (member.Username != Startup.BOT_USERNAME)
-                        {
-                            await db.SetAddAsync(new RedisKey($"ChatMembers:{chatId}"), new RedisValue(member.Id.ToString()));
-
-                            if (!await db.HashExistsAsync(new RedisKey($"CallUserIcons:{chatId}"), new RedisValue(member.Id.ToString())))
-                            {
-
-                                var icon = BaseDictionary.CallIcons.RandomElement();
-                                var hashEntry = new HashEntry(new RedisValue(member.Id.ToString()), new RedisValue(icon));
-
-                                await db.HashSetAsync(new RedisKey($"CallUserIcons:{chatId}"), new HashEntry[] { hashEntry });
-                            }
-                        }
-                    });
-                }
-                catch (Exception ex)
-                {
-                    Logger.Log.Error($"{GetType().Name}: redis database error!", ex);
-                }
-            });
+                await db.HashSetAsync($"ChatMember:{chatId}:{newChatMember.Id}", new[] { new HashEntry("CallIcon", icon) });
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.Error($"{GetType().Name}: error!", ex);
+            }
         }
     }
 }
